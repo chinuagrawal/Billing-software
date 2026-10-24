@@ -76,7 +76,6 @@ function fixture(): { state: Workspace; invoice: Invoice } {
       dueDate: today(),
       placeOfSupply: '08',
       shippingAddress: 'Jaipur',
-      channel: 'Direct',
       reference: '',
       items: [{ ...line }],
       notes: '',

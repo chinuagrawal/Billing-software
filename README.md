@@ -1,6 +1,6 @@
 # Agrawal Enterprises — Billing workspace
 
-A React + TypeScript billing application for **Agrawal Enterprises, Rajasthan**, with a responsive business dashboard, GST-aware domestic B2B/B2C invoicing, inventory and customer management, payment records, reporting, Firebase integration, and a trusted server API. Deploy the frontend and API together on Vercel.
+A React + TypeScript billing application for **Agrawal Enterprises, Rajasthan**, for B2B and B2C billing, with a responsive business dashboard, GST-aware domestic B2B/B2C invoicing, inventory and customer management, payment records, reporting, Firebase integration, and a trusted server API. Deploy the frontend and API together on Vercel.
 
 ## Run locally
 
@@ -27,7 +27,7 @@ The app opens in a clearly labelled **demo workspace** when Firebase is not conf
 - Customer records with B2B/B2C distinction, addresses, contact details, GSTIN format/checksum and state validation.
 - Product catalogue with SKU, HSN/SAC, configurable GST rate, selling price, purchase cost, units and stock thresholds.
 - Stock adjustments with mandatory reasons and an activity record.
-- Invoice drafts, line quantities/prices/discounts, place of supply, order references and sales-channel labels.
+- Invoice drafts, line quantities/prices/discounts, place of supply, billing references.
 - Domestic intrastate CGST + SGST/UTGST and interstate IGST calculation. Prices exclude GST. Individual tax components round to paise per line.
 - Financial-year sequence allocated only when issuing, with invoice numbers limited to 16 characters. Stock is deducted in the same operation.
 - Issued customer/business/item snapshots are retained; editing a customer or business does not rewrite old invoices.
@@ -35,9 +35,9 @@ The app opens in a clearly labelled **demo workspace** when Firebase is not conf
 - Partial/full payment recording, overpayment prevention, receipts ledger and invoice status calculation.
 - Print-friendly A4 invoices; use the browser's **Print / PDF → Save as PDF** to download a PDF.
 - Sales, inventory, payments and GST sales-register CSV exports, with spreadsheet formula-injection protection.
-- Date-filtered tax summaries, channel analysis, receivables ageing and activity history.
+- Date-filtered tax summaries, B2B/B2C sales analysis, receivables ageing and activity history.
 - Business/bank/UPI/terms settings and complete JSON backup download.
-- Firebase email/password sign-in, account creation and password-reset flow; per-account Firestore data isolation.
+- Firebase phone OTP sign-in with reCAPTCHA, resend cooldown and per-account Firestore data isolation. Email sign-in remains available for existing accounts.
 - Server-side financial validation, verified/revocation-checked authentication, transactional SKU reservations, and idempotent write requests.
 
 ## Connect Firebase
@@ -50,7 +50,7 @@ The app opens in a clearly labelled **demo workspace** when Firebase is not conf
 
    The development server provides `/api/command` locally; the same handler becomes a Vercel serverless function in production. `npm run preview` serves the built frontend only—use `npm run dev` or Vercel for cloud-write integration testing.
 
-4. Enable **Authentication → Sign-in method → Email/Password**.
+4. Enable **Authentication → Sign-in method → Phone**. Under **Authentication → Settings → SMS region policy**, allow India (and any other countries you serve). Link a Cloud Billing account for real SMS. Enable Email/Password only if you want the optional email sign-in fallback.
 5. Create a **Cloud Firestore** database. Choose an appropriate region for your business; an India region may be appropriate if available for your requirements.
 6. In Authentication settings, add your local and deployed domains to **Authorized domains**. Newly created projects may require adding `localhost` and `127.0.0.1` explicitly.
 7. Deploy the included rules and indexes to your project. After installing the official Firebase CLI and signing in:
@@ -61,10 +61,27 @@ The app opens in a clearly labelled **demo workspace** when Firebase is not conf
 
    Alternatively, paste `firestore.rules` into the Firestore Rules editor and publish it. Do not use public test-mode rules.
 
-8. Restart `npm run dev`. Open **Settings → Connect workspace** and create your owner account.
+8. Restart `npm run dev`. Open **Settings → Connect workspace**, request an OTP and verify your mobile number. The first verified sign-in creates your owner account.
 9. Your cloud workspace starts **empty**. Add your real business details, GSTIN, customers and products. Demo records are never automatically uploaded.
 
-Firebase web configuration is intended for the browser; Firestore rules provide authorization. Never put service-account private keys, Firebase Admin credentials, marketplace secrets or payment-provider secrets in `VITE_*` variables.
+Firebase web configuration is intended for the browser; Firestore rules provide authorization. Never put service-account private keys, Firebase Admin credentials, payment-provider secrets in `VITE_*` variables.
+
+### Phone OTP setup for this project
+
+The local web configuration is set to **billing-software-atd** in the Git-ignored `.env.local`. `.firebaserc` selects that project for Firebase CLI commands. For Vercel, copy the six `VITE_FIREBASE_*` values into the project's environment settings and redeploy; the local file is never uploaded automatically.
+
+1. Enable Phone sign-in in the [project Authentication console](https://console.firebase.google.com/project/billing-software-atd/authentication/providers).
+2. Configure SMS region policy to allow India. Real verification SMS requires a linked billing account; charges and quotas apply.
+3. In Authentication settings, add the exact Vercel hostname and any custom domain to **Authorized domains**. Firebase documents that localhost is not supported as a hosted domain for production phone authentication; validate real SMS on your authorized deployed HTTPS domain.
+4. For development, configure a fictional phone number and fixed verification code in **Phone numbers for testing** under the Phone provider. These test numbers do not receive SMS. Do not commit those test codes or disable app verification in production.
+5. Deploy Firestore rules with `npx firebase-tools login`, then `npx firebase-tools deploy --only firestore --project billing-software-atd`. Create the Firestore database in the console first if it does not exist.
+6. Configure the three server-only credentials in Vercel so verified users can save billing records. Web configuration alone enables authentication but does not configure the trusted write API. Never send the service-account key in chat or add it to Git.
+
+The app uses Firebase's reCAPTCHA verification before SMS, a 60-second resend cooldown, a six-digit OTP input and clear errors. The cooldown is only a usability control; Firebase enforces SMS limits. The phone number is processed by Google for spam/abuse prevention, and the form asks for consent before sending. No real SMS is sent by automated tests.
+
+An email account and an independently created phone account have different Firebase UIDs and therefore separate billing workspaces. Existing email users should keep using email sign-in; account linking/migration is not implemented.
+
+References: [Firebase web phone authentication](https://firebase.google.com/docs/auth/web/phone-auth) and [SMS billing requirements](https://firebase.google.com/docs/auth/faq-and-troubleshooting).
 
 ### Firestore structure and integrity
 
@@ -103,7 +120,7 @@ In **Settings**, enter your legal name, actual GSTIN, registered address, contac
 
 Add correct HSN/SAC codes and applicable rates to each product. Invoice tax treatment uses the explicitly selected **place of supply**, not merely the customer's address. The app assumes a regular registered supplier and ordinary domestic forward-charge sales; reverse charge, exports, SEZ supplies, cess, composition schemes and exempt-supply documents require additional workflows.
 
-The CSV is an accounting sales register, **not a GST-portal upload schema or a filed return**. IRN/e-invoice generation, signed QR codes, e-way bills and GST return submission are not connected. Marketplace channel names are manual order classifications; Amazon/Flipkart/website order sync and settlement reconciliation are not integrated. Recording a payment does not collect money.
+The CSV is an accounting sales register, **not a GST-portal upload schema or a filed return**. IRN/e-invoice generation, signed QR codes, e-way bills and GST return submission are not connected. Recording a payment does not collect money.
 
 Consult your accountant about your applicable requirements. Invoice fields were informed by the [CBIC invoice particulars](https://cbic-gst.gov.in/gst-invoice-rules.html); check current legal applicability for your business. Implementation references: [Firebase transactions](https://firebase.google.com/docs/firestore/manage-data/transactions), [Firebase authorization rules](https://firebase.google.com/docs/rules/basics), and [Vite on Vercel](https://vercel.com/docs/frameworks/frontend/vite).
 
@@ -114,7 +131,6 @@ This is a working billing application and deployment-ready project foundation, n
 - Connect and verify your actual Firebase and Vercel projects; test rules against the Firebase emulator and staging environment.
 - Add role-based teams, approval workflows, infrastructure rate limits and tamper-resistant audit retention.
 - Credit notes, returns/refunds, purchase orders, supplier bills, stock lots/multiple warehouses and accounting journal entries.
-- Marketplace APIs, payment gateway integration, webhook verification and settlement reconciliation.
 - GST API/GSP integration for applicable IRN, e-way-bill and filing workflows.
 - Server-side pagination and aggregate reporting for large histories, monitoring, automated database backups and tested restoration.
 

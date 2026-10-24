@@ -76,7 +76,6 @@ const invoice = z
     dueDate: date,
     placeOfSupply: z.string().length(2),
     shippingAddress: z.string().max(2000),
-    channel: z.enum(['Direct', 'Website', 'Amazon', 'Flipkart']),
     reference: text,
     items: z.array(item).min(1).max(50),
     notes: z.string().max(4000),
@@ -93,7 +92,7 @@ const payment = z
     customerName: text,
     amount: z.number().positive(),
     date,
-    method: z.enum(['UPI', 'Bank transfer', 'Cash', 'Card', 'Cheque', 'Marketplace settlement']),
+    method: z.enum(['UPI', 'Bank transfer', 'Cash', 'Card', 'Cheque']),
     reference: text,
   })
   .strict();

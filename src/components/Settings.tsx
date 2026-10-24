@@ -20,6 +20,7 @@ import { useStore } from '../lib/store';
 import { auth, firebaseConfigured } from '../lib/firebase';
 import { download, today } from '../lib/billing';
 import { Field, SectionTitle, StateSelect } from './ui';
+import { PhoneSignIn } from './PhoneSignIn';
 import type { Business } from '../types';
 
 export function Settings({
@@ -174,7 +175,7 @@ export function Settings({
             <h3>{mode === 'cloud' ? 'Your business, connected.' : 'Your business, everywhere.'}</h3>
             <p>
               {mode === 'cloud'
-                ? `Signed in as ${user?.email}. Your records are stored in your private Firebase workspace.`
+                ? `Signed in as ${user?.phoneNumber || user?.email || 'your account'}. Your records are stored in your private Firebase workspace.`
                 : 'Connect your cloud workspace to access your invoices, customers and inventory across devices.'}
             </p>
             <div className="connection-status">
@@ -252,6 +253,20 @@ export function Settings({
   );
 }
 export function AuthForm({ onDone }: { onDone: () => void }) {
+  const [emailMode, setEmailMode] = useState(false);
+  if (!firebaseConfigured) return <EmailAuthForm onDone={onDone} />;
+  return (
+    <>
+      {emailMode ? <EmailAuthForm onDone={onDone} /> : <PhoneSignIn onDone={onDone} />}
+      <div className="auth-links auth-method-switch">
+        <button type="button" onClick={() => setEmailMode(!emailMode)}>
+          {emailMode ? 'Use mobile OTP instead' : 'Use an existing email account instead'}
+        </button>
+      </div>
+    </>
+  );
+}
+function EmailAuthForm({ onDone }: { onDone: () => void }) {
   const [register, setRegister] = useState(false),
     [email, setEmail] = useState(''),
     [password, setPassword] = useState(''),
@@ -267,7 +282,7 @@ export function AuthForm({ onDone }: { onDone: () => void }) {
         <h3>Your cloud workspace is ready to connect</h3>
         <p>
           Add your Firebase web app configuration to the project’s environment settings, enable
-          Email/Password sign-in, and deploy the included Firestore rules.
+          Phone sign-in, and deploy the included Firestore rules.
         </p>
         <ol>
           <li>Create a Firebase project and register a web app.</li>

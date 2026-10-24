@@ -46,7 +46,6 @@ export function Invoices({
           'Type',
           'GSTIN',
           'Place of supply',
-          'Channel',
           'Taxable',
           'CGST',
           'SGST/UTGST',
@@ -65,7 +64,6 @@ export function Invoices({
             i.customer.type,
             i.customer.gstin,
             i.placeOfSupply,
-            i.channel,
             t.taxable,
             t.cgst,
             t.sgst,
@@ -82,7 +80,7 @@ export function Invoices({
     <>
       <SectionTitle
         title="Invoices"
-        subtitle="From your first order to your next big milestone."
+        subtitle="Manage your B2B and B2C invoices in one place."
         action={
           <>
             <button className="button secondary" onClick={exportRows}>
@@ -133,7 +131,7 @@ export function Invoices({
           <SearchBox
             value={search}
             onChange={setSearch}
-            placeholder="Search invoice, customer or order…"
+            placeholder="Search invoice, customer or reference…"
           />
           <select
             aria-label="Filter customer type"
@@ -152,7 +150,6 @@ export function Invoices({
                 <th>Invoice</th>
                 <th>Customer</th>
                 <th>Date / Due</th>
-                <th>Channel</th>
                 <th>Total</th>
                 <th>Balance</th>
                 <th>Status</th>
@@ -180,9 +177,6 @@ export function Invoices({
                   <td>
                     {dateLabel(i.date)}
                     <small>Due {dateLabel(i.dueDate)}</small>
-                  </td>
-                  <td>
-                    <span className="channel-badge">{i.channel}</span>
                   </td>
                   <td className="amount">{money(invoiceTotals(i).total)}</td>
                   <td className="amount">{money(balance(i))}</td>

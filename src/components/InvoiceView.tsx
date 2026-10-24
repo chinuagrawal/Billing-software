@@ -115,7 +115,7 @@ export function InvoiceView({
               <dd>{dateLabel(i.dueDate)}</dd>
               {i.reference && (
                 <>
-                  <dt>Order reference</dt>
+                  <dt>Reference</dt>
                   <dd>{i.reference}</dd>
                 </>
               )}
@@ -139,7 +139,6 @@ export function InvoiceView({
               <strong>Place of supply:</strong> {STATES[i.placeOfSupply]} ({i.placeOfSupply})
             </p>
             <p>Reverse charge: No</p>
-            <p>Channel: {i.channel}</p>
           </section>
         </div>
         <table className="print-table">

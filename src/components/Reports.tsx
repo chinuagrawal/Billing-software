@@ -38,7 +38,6 @@ export function Reports() {
         item.qty,
         item.gst,
         Number(gross.toFixed(2)),
-        i.channel,
       ];
     }),
   );
@@ -88,19 +87,19 @@ export function Reports() {
         <section className="panel">
           <div className="panel-header">
             <div>
-              <h3>Sales by channel</h3>
-              <p>Compare the places your customers shop</p>
+              <h3>Sales by customer type</h3>
+              <p>Compare business and consumer billing</p>
             </div>
             <BarChart3 size={20} />
           </div>
-          <div className="channel-report">
-            {['Direct', 'Website', 'Amazon', 'Flipkart'].map((channel) => {
-              const rows = invoices.filter((i) => i.channel === channel),
+          <div className="segment-report">
+            {['B2B', 'B2C'].map((type) => {
+              const rows = invoices.filter((i) => i.customer.type === type),
                 sum = rows.reduce((s, i) => s + invoiceTotals(i).total, 0);
               return (
-                <div key={channel}>
+                <div key={type}>
                   <div>
-                    <strong>{channel}</strong>
+                    <strong>{type}</strong>
                     <span>
                       {rows.length} invoices · <b>{money(sum)}</b>
                     </span>
@@ -177,7 +176,6 @@ export function Reports() {
                     'Quantity',
                     'GST %',
                     'Taxable value',
-                    'Channel',
                   ],
                   ...taxRows,
                 ]),

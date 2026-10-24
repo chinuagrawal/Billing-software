@@ -1,5 +1,4 @@
 export type CustomerType = 'B2B' | 'B2C';
-export type Channel = 'Direct' | 'Website' | 'Amazon' | 'Flipkart';
 export interface Business {
   name: string;
   gstin: string;
@@ -57,7 +56,6 @@ export interface Invoice {
   dueDate: string;
   placeOfSupply: string;
   shippingAddress: string;
-  channel: Channel;
   reference: string;
   items: LineItem[];
   notes: string;

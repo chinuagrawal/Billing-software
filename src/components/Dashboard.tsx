@@ -10,9 +10,6 @@ import {
   Plus,
   ArrowRight,
   Package,
-  ShoppingBag,
-  Store,
-  Globe,
   CircleCheck,
 } from 'lucide-react';
 import { useStore } from '../lib/store';
@@ -394,31 +391,6 @@ export function Dashboard({
           </div>
         </section>
       </div>
-      <section className="channel-strip">
-        <div>
-          <span className="channel-icon">
-            <ShoppingBag size={19} />
-          </span>
-          <div>
-            <strong>One business. Every channel.</strong>
-            <p>Keep all your sales in the same place.</p>
-          </div>
-        </div>
-        <div className="channel-labels">
-          {[
-            { name: 'Direct', icon: <Store size={16} /> },
-            { name: 'Website', icon: <Globe size={16} /> },
-            { name: 'Amazon', icon: <ShoppingBag size={16} /> },
-            { name: 'Flipkart', icon: <ShoppingBag size={16} /> },
-          ].map((c) => (
-            <button key={c.name} onClick={() => navigate('Reports')}>
-              {c.icon}
-              {c.name}
-              <span>{invoices.filter((i) => i.channel === c.name).length}</span>
-            </button>
-          ))}
-        </div>
-      </section>
       <footer className="page-footer">
         <span>Made for your next chapter.</span>
         <span>

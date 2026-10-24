@@ -181,9 +181,11 @@ export default function App() {
             <ArrowUpRight size={14} />
           </button>
           <div className="sidebar-user">
-            <Avatar name={user?.email || 'Agrawal Enterprises'} />
+            <Avatar name={user?.phoneNumber || user?.email || 'Agrawal Enterprises'} />
             <div>
-              <strong>{user?.email?.split('@')[0] || 'Agrawal Enterprises'}</strong>
+              <strong>
+                {user?.phoneNumber || user?.email?.split('@')[0] || 'Agrawal Enterprises'}
+              </strong>
               <span>{mode === 'demo' ? 'Demo workspace' : 'Workspace owner'}</span>
             </div>
             <button
@@ -299,7 +301,7 @@ export default function App() {
               </button>
               {profile && (
                 <div className="account-popover">
-                  <strong>{user?.email || 'Agrawal Enterprises'}</strong>
+                  <strong>{user?.phoneNumber || user?.email || 'Agrawal Enterprises'}</strong>
                   <small>{mode === 'demo' ? 'You’re in demo mode' : 'Cloud workspace owner'}</small>
                   <button
                     onClick={() => {
@@ -492,9 +494,8 @@ export default function App() {
                 </button>
               ))}
               <div className="info-banner">
-                Sales channels are labels for tracking manually entered orders. Marketplace sync,
-                online payment collection, GST filing and e-invoicing require additional
-                integrations.
+                Create GST invoices for B2B and B2C customers, track stock and record payments. GST
+                filing and e-invoicing require additional integrations.
               </div>
             </div>
           )}

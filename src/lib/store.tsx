@@ -149,11 +149,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         'The change could not be confirmed. Retry with the same details; duplicate requests are protected.',
       );
     }
-    const result = await response
-      .json()
-      .catch(() => ({
-        error: 'The cloud write service is unavailable. Check the server deployment.',
-      }));
+    const result = await response.json().catch(() => ({
+      error: 'The cloud write service is unavailable. Check the server deployment.',
+    }));
     if (!response.ok || !result.ok) throw new Error(result.error || 'Unable to save this change.');
     pendingRequests.current.delete(fingerprint);
   }

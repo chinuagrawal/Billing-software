@@ -199,7 +199,6 @@ export function demoWorkspace(): Workspace {
       dueDate: offset(-n * 2 + 14),
       placeOfSupply: c.state,
       shippingAddress: c.address,
-      channel: ['Direct', 'Website', 'Amazon', 'Flipkart'][n % 4] as Invoice['channel'],
       reference: n % 4 ? `ORD-${8040 + n}` : '',
       items: [
         {

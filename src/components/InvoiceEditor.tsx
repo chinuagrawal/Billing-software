@@ -21,8 +21,7 @@ export function InvoiceEditor({
   const [date, setDate] = useState(initial?.date || today()),
     [dueDate, setDueDate] = useState(initial?.dueDate || today()),
     [place, setPlace] = useState(initial?.placeOfSupply || data.business.state);
-  const [channel, setChannel] = useState<Invoice['channel']>(initial?.channel || 'Direct'),
-    [reference, setReference] = useState(initial?.reference || ''),
+  const [reference, setReference] = useState(initial?.reference || ''),
     [shipping, setShipping] = useState(initial?.shippingAddress || ''),
     [notes, setNotes] = useState(initial?.notes || '');
   const [items, setItems] = useState<LineItem[]>(initial?.items || []),
@@ -71,7 +70,6 @@ export function InvoiceEditor({
           dueDate,
           placeOfSupply: place,
           shippingAddress: shipping || customer.address,
-          channel,
           reference,
           items,
           notes,
@@ -152,19 +150,9 @@ export function InvoiceEditor({
         <Field label="Place of supply *">
           <StateSelect value={place} onChange={setPlace} />
         </Field>
-        <Field label="Sales channel">
-          <select
-            value={channel}
-            onChange={(e) => setChannel(e.target.value as Invoice['channel'])}
-          >
-            {['Direct', 'Website', 'Amazon', 'Flipkart'].map((c) => (
-              <option key={c}>{c}</option>
-            ))}
-          </select>
-        </Field>
-        <Field label="Order / reference number">
+        <Field label="Reference number">
           <input
-            placeholder="e.g. ORD-1001"
+            placeholder="e.g. PO-1001"
             value={reference}
             onChange={(e) => setReference(e.target.value)}
           />

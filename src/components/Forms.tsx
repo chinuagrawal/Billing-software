@@ -366,11 +366,9 @@ export function PaymentForm({
         </Field>
         <Field label="Payment method">
           <select value={method} onChange={(e) => setMethod(e.target.value)}>
-            {['UPI', 'Bank transfer', 'Cash', 'Card', 'Cheque', 'Marketplace settlement'].map(
-              (m) => (
-                <option key={m}>{m}</option>
-              ),
-            )}
+            {['UPI', 'Bank transfer', 'Cash', 'Card', 'Cheque'].map((m) => (
+              <option key={m}>{m}</option>
+            ))}
           </select>
         </Field>
         <Field label="Transaction reference">

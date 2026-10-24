@@ -6,3 +6,6 @@ dist/
 .vercel/
 *.tsbuildinfo
 test-results/
+
+.firebase/
+firebase-debug.log*
