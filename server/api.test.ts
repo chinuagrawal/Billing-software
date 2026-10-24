@@ -14,8 +14,8 @@ vi.mock('./commands', () => ({
   executeServerCommand: mocks.execute,
   CommandError: class extends Error {},
 }));
-import handler from '../api/command';
-import accountHandler from '../api/account';
+import handler from './http/command';
+import accountHandler from './http/account';
 async function request(method: string, body: unknown, authorization?: string, endpoint = handler) {
   let output = '';
   const headers = new Map<string, string>();

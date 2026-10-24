@@ -1,7 +1,7 @@
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
-import commandHandler from './api/command';
-import accountHandler from './api/account';
+import commandHandler from './server/http/command';
+import accountHandler from './server/http/account';
 export default defineConfig(({ mode }) => ({
   plugins: [
     react(),

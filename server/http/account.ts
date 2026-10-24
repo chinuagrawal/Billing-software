@@ -1,7 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { z } from 'zod';
 import { services, readBody } from './command.js';
-import { deleteOwnerAccount } from '../server/account.js';
+import { deleteOwnerAccount } from '../account.js';
 
 const schema = z.object({ confirmation: z.literal('DELETE') }).strict();
 export default async function handler(

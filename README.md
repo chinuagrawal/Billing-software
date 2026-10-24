@@ -146,7 +146,7 @@ Current collection listeners load the owner's records into memory. JSON download
 
 - `src/lib/billing.ts` — shared financial calculations, validation and business mutations.
 - `src/lib/store.tsx` — local persistence, authentication, Firestore listeners and authenticated API calls.
-- `api/command.ts` — Vercel HTTP endpoint, token verification, request size limits and safe errors.
+- `server/http/command.ts` — Vercel HTTP endpoint, token verification, request size limits and safe errors.
 - `server/schema.ts` — runtime validation of every accepted command.
 - `server/commands.ts` — authoritative transactional writes, SKU reservations and idempotency.
 - `src/lib/seed.ts` — clearly separated demo data and empty cloud defaults.
@@ -156,3 +156,5 @@ Current collection listeners load the owner's records into memory. JSON download
 - `server/*.test.ts` — server boundary, authentication, tenant isolation and replay protection tests using isolated mocks. A real Firebase project/emulator integration run is still required before live rollout.
 
 `@grpc/grpc-js` is overridden to a patched compatible 1.x release because the Firebase SDK pins an older Node transport dependency. The browser app uses Firebase's browser transport.
+
+The Vercel endpoints in `api/*.js` are generated bundles of the TypeScript server handlers. Run `npm run build:api` after changing server code; the standard build also regenerates them and runs a native Node startup check so function imports do not depend on Vite resolution.
