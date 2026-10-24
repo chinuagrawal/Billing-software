@@ -20,6 +20,8 @@ import { useStore } from '../lib/store';
 import { auth, firebaseConfigured, missingFirebaseConfig } from '../lib/firebase';
 import { download, today, businessSetupError } from '../lib/billing';
 import { DeleteAccount } from './DeleteAccount';
+import { InvoiceStylePicker } from './InvoiceStylePicker';
+import { resolveTemplate } from '../lib/invoiceTemplates';
 import { Field, SectionTitle, StateSelect } from './ui';
 import { PhoneSignIn } from './PhoneSignIn';
 import type { Business } from '../types';
@@ -183,6 +185,11 @@ export function Settings({
               </Field>
             </div>
           </section>
+          <InvoiceStylePicker
+            value={resolveTemplate(b.invoiceTemplate)}
+            onChange={(invoiceTemplate) => setB({ ...b, invoiceTemplate })}
+            business={b}
+          />
           {error && (
             <div className="error-banner" role="alert">
               {error}

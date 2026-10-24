@@ -1,5 +1,7 @@
 export type CustomerType = 'B2B' | 'B2C';
+export type InvoiceTemplate = 'classic' | 'modern' | 'minimal';
 export interface Business {
+  invoiceTemplate?: InvoiceTemplate;
   setupCompleted?: boolean;
   name: string;
   gstin: string;

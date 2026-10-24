@@ -156,6 +156,10 @@ export function applyCommand(current: Workspace, command: Command): Workspace {
     state.audit.unshift({ id: uid(), action, detail, at: new Date().toISOString() });
   if (command.type === 'saveBusiness') {
     const b = command.business;
+    insist(
+      !b.invoiceTemplate || ['classic', 'modern', 'minimal'].includes(b.invoiceTemplate),
+      'Choose a valid invoice style.',
+    );
     if (b.setupCompleted) {
       const problem = businessSetupError(b);
       insist(!problem, problem);

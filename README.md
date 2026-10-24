@@ -160,3 +160,9 @@ Current collection listeners load the owner's records into memory. JSON download
 The Vercel endpoints in `api/*.js` are generated bundles of the TypeScript server handlers. Run `npm run build:api` after changing server code; the standard build also regenerates them and runs a native Node startup check so function imports do not depend on Vite resolution.
 
 The nested `jwks-rsa` dependency uses a `jose` 5.x compatibility override because its CommonJS import of ESM-only jose 6 fails under Vercel's loader. The native runtime check disables synchronous ESM require support to reproduce this environment and validates JWK conversion with an ephemeral RSA key. No real Firebase keys or accounts are used.
+
+## Invoice styles
+
+Choose **Settings → Invoice appearance → Classic GST / Modern / Minimal**, preview the selected layout, then save changes. Classic GST uses a boxed seller/buyer header, ruled item table, HSN tax breakdown, amount in words and signatory area. Modern uses green accents; Minimal uses a compact monochrome layout. The selected workspace style applies to invoice viewing and Print / Save as PDF, including existing invoices; stored financial details and amounts are not rewritten. Older accounts default to Modern until a style is selected. Each new invoice also retains the then-selected preference in its business snapshot for exported records.
+
+All templates share the same line-rounded financial calculations, HSN/rate grouping and Indian rupee/paise amount words. Mixed units are not added into a misleading quantity total. Previews use clearly marked sample data. The reference document's issuer identity, logo and signature are not copied into your business profile.

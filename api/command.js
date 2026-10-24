@@ -15,6 +15,7 @@ var date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine((value) => {
   return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
 }, "Invalid calendar date");
 var business = z.object({
+  invoiceTemplate: z.enum(["classic", "modern", "minimal"]).optional(),
   setupCompleted: z.boolean().optional(),
   name: text,
   gstin: z.string().max(15),
@@ -227,6 +228,10 @@ function applyCommand(current, command) {
   const log = (action, detail) => state.audit.unshift({ id: uid(), action, detail, at: (/* @__PURE__ */ new Date()).toISOString() });
   if (command.type === "saveBusiness") {
     const b = command.business;
+    insist(
+      !b.invoiceTemplate || ["classic", "modern", "minimal"].includes(b.invoiceTemplate),
+      "Choose a valid invoice style."
+    );
     if (b.setupCompleted) {
       const problem = businessSetupError(b);
       insist(!problem, problem);

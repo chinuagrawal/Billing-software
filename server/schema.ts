@@ -12,6 +12,7 @@ const date = z
   }, 'Invalid calendar date');
 const business = z
   .object({
+    invoiceTemplate: z.enum(['classic', 'modern', 'minimal']).optional(),
     setupCompleted: z.boolean().optional(),
     name: text,
     gstin: z.string().max(15),
