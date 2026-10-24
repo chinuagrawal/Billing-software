@@ -31,8 +31,7 @@ export function phoneAuthError(error: unknown): string {
       'Security verification failed. Check the authorized domain and Firebase phone-auth setup.',
     'auth/network-request-failed': 'Check your internet connection and try again.',
   };
-  return (
-    (code && messages[code]) ||
-    'Unable to complete phone sign-in. Try again or check Firebase Authentication setup.'
-  );
+  if (code && messages[code]) return messages[code];
+  const safeCode = code && /^auth\/[a-z-]+$/.test(code) ? ` (${code})` : '';
+  return `Unable to complete phone sign-in${safeCode}. Try again or check Firebase Authentication setup.`;
 }

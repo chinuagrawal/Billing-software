@@ -77,7 +77,7 @@ The local web configuration is set to **billing-software-atd** in the Git-ignore
 5. Deploy Firestore rules with `npx firebase-tools login`, then `npx firebase-tools deploy --only firestore --project billing-software-atd`. Create the Firestore database in the console first if it does not exist.
 6. Configure the three server-only credentials in Vercel so verified users can save billing records. Web configuration alone enables authentication but does not configure the trusted write API. Never send the service-account key in chat or add it to Git.
 
-The app uses Firebase's reCAPTCHA verification before SMS, a 60-second resend cooldown, a six-digit OTP input and clear errors. The cooldown is only a usability control; Firebase enforces SMS limits. The phone number is processed by Google for spam/abuse prevention, and the form asks for consent before sending. No real SMS is sent by automated tests.
+The app uses Firebase's invisible reCAPTCHA verification before SMS (Google can still require a challenge), a 60-second resend cooldown, a six-digit OTP input and clear errors. The cooldown is only a usability control; Firebase enforces SMS limits. The phone number is processed by Google for spam/abuse prevention, and the form asks for consent before sending. No real SMS is sent by automated tests.
 
 An email account and an independently created phone account have different Firebase UIDs and therefore separate billing workspaces. Existing email users should keep using email sign-in; account linking/migration is not implemented.
 

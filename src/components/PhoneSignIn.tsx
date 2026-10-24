@@ -53,7 +53,9 @@ export function PhoneSignIn({ onDone }: { onDone: () => void }) {
     setCode('');
     try {
       verifier.current?.clear();
-      verifier.current = new RecaptchaVerifier(auth, container.current, { size: 'normal' });
+      // Firebase executes invisible verification when requesting the SMS. Google may
+      // still show a challenge when it cannot verify the request automatically.
+      verifier.current = new RecaptchaVerifier(auth, container.current, { size: 'invisible' });
       const result = await signInWithPhoneNumber(auth, number, verifier.current);
       if (mounted.current) {
         setConfirmation(result);
@@ -153,6 +155,12 @@ export function PhoneSignIn({ onDone }: { onDone: () => void }) {
         </>
       )}
       <div ref={container} className="phone-recaptcha" />
+      {!confirmation && (
+        <p className="form-hint">
+          Security verification runs automatically when you send the OTP. Google may ask you to
+          complete a challenge if needed.
+        </p>
+      )}
       {error && (
         <div className="error-banner" role="alert">
           {error}
