@@ -158,3 +158,5 @@ Current collection listeners load the owner's records into memory. JSON download
 `@grpc/grpc-js` is overridden to a patched compatible 1.x release because the Firebase SDK pins an older Node transport dependency. The browser app uses Firebase's browser transport.
 
 The Vercel endpoints in `api/*.js` are generated bundles of the TypeScript server handlers. Run `npm run build:api` after changing server code; the standard build also regenerates them and runs a native Node startup check so function imports do not depend on Vite resolution.
+
+The nested `jwks-rsa` dependency uses a `jose` 5.x compatibility override because its CommonJS import of ESM-only jose 6 fails under Vercel's loader. The native runtime check disables synchronous ESM require support to reproduce this environment and validates JWK conversion with an ephemeral RSA key. No real Firebase keys or accounts are used.

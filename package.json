@@ -9,7 +9,7 @@
     "preview": "vite preview --host 127.0.0.1",
     "test": "vitest run",
     "format": "prettier --write src server api *.json *.ts index.html README.md",
-    "test:server-runtime": "node scripts/check-server-runtime.mjs",
+    "test:server-runtime": "node --no-experimental-require-module scripts/check-server-runtime.mjs",
     "build:api": "node scripts/build-api.mjs"
   },
   "dependencies": {
@@ -32,7 +32,10 @@
     "vitest": "^5.0.5"
   },
   "overrides": {
-    "@grpc/grpc-js": "^1.13.6"
+    "@grpc/grpc-js": "^1.13.6",
+    "jwks-rsa": {
+      "jose": "^5.10.0"
+    }
   },
   "engines": {
     "node": "24.x"
