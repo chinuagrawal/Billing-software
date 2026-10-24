@@ -1,5 +1,5 @@
-import type { Business, Customer, Product, Workspace, Invoice } from '../types';
-import { today, invoiceTotals, fy } from './billing';
+import type { Business, Customer, Product, Workspace, Invoice } from '../types.js';
+import { today, invoiceTotals, fy } from './billing.js';
 
 export const defaultBusiness: Business = {
   name: 'Agrawal Enterprises',

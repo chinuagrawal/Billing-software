@@ -2,8 +2,8 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { cert, getApps, initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
-import { requestSchema } from '../server/schema';
-import { CommandError, executeServerCommand } from '../server/commands';
+import { requestSchema } from '../server/schema.js';
+import { CommandError, executeServerCommand } from '../server/commands.js';
 
 const MAX_BODY = 200_000;
 export function services() {

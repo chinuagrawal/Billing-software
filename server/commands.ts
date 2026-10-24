@@ -1,8 +1,8 @@
 import { createHash } from 'node:crypto';
 import type { DocumentReference, Firestore } from 'firebase-admin/firestore';
-import type { Command, Workspace } from '../src/types';
-import { applyCommand, fy } from '../src/lib/billing';
-import { emptyWorkspace } from '../src/lib/seed';
+import type { Command, Workspace } from '../src/types.js';
+import { applyCommand, fy } from '../src/lib/billing.js';
+import { emptyWorkspace } from '../src/lib/seed.js';
 
 export class CommandError extends Error {}
 
