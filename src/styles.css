@@ -3304,3 +3304,26 @@ tbody tr:hover {
     display: none;
   }
 }
+
+.onboarding-shell {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 48px 28px;
+}
+.onboarding-label {
+  color: #6a805e;
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  margin-bottom: 18px;
+}
+.account-danger {
+  border-color: #eacaca;
+}
+.account-danger h3 {
+  color: #a03b3b;
+}
+@media (max-width: 600px) {
+  .onboarding-shell {
+    padding: 28px 18px;
+  }
+}

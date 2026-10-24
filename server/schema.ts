@@ -12,6 +12,7 @@ const date = z
   }, 'Invalid calendar date');
 const business = z
   .object({
+    setupCompleted: z.boolean().optional(),
     name: text,
     gstin: z.string().max(15),
     state: z.string().length(2),

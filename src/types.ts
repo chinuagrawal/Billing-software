@@ -1,5 +1,6 @@
 export type CustomerType = 'B2B' | 'B2C';
 export interface Business {
+  setupCompleted?: boolean;
   name: string;
   gstin: string;
   state: string;

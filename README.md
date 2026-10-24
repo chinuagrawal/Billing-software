@@ -114,6 +114,12 @@ Rules permit only owner-scoped reads of business records and **deny all direct c
 
 No Firebase project, credentials, Vercel account or production deployment has been created or connected automatically.
 
+## First sign-in and account deletion
+
+After a cloud user's first sign-in, the app requires account setup before showing billing pages. New profiles start blank, with only the authenticated phone/email prefilled. Enter your legal business name, GSTIN and matching state, registered address, business email/phone and invoice prefix. Bank, UPI and invoice terms are optional; if entering bank details, complete the bank name/account/IFSC together. Existing profiles without the setup flag are asked to review and complete their details once. Completing setup persists `settings/business.setupCompleted`; issued invoice snapshots retain their original details.
+
+**Settings → Delete account** offers a backup download and requires a fresh phone OTP or existing email password plus typing `DELETE`. The server independently requires a verified ID token with authentication in the last five minutes. It locks new billing mutations, recursively deletes the owner's Firestore workspace (including all collections), then deletes their Firebase Authentication user. Other owners are unaffected. If cleanup fails, sign-in is preserved so deletion can be retried; partially removed records cannot be restored through the app. A minimal server-only `accountLifecycle/{uid}` deletion marker containing only status/timestamp is retained to prevent in-flight requests from recreating deleted records. Downloaded backups and infrastructure backups/logs are outside this operation. Real account deletion is not executed by the test suite.
+
 ## Business setup
 
 In **Settings**, enter your legal name, actual GSTIN, registered address, contact details and payment instructions. Rajasthan uses state code `08`. GSTIN checksum validation only checks structure; it does not verify registration status with the GST portal.

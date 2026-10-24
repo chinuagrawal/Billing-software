@@ -18,7 +18,8 @@ import {
 } from 'lucide-react';
 import { useStore } from '../lib/store';
 import { auth, firebaseConfigured, missingFirebaseConfig } from '../lib/firebase';
-import { download, today } from '../lib/billing';
+import { download, today, businessSetupError } from '../lib/billing';
+import { DeleteAccount } from './DeleteAccount';
 import { Field, SectionTitle, StateSelect } from './ui';
 import { PhoneSignIn } from './PhoneSignIn';
 import type { Business } from '../types';
@@ -26,12 +27,18 @@ import type { Business } from '../types';
 export function Settings({
   notify,
   onConnect,
+  onboarding = false,
 }: {
   notify: (s: string) => void;
   onConnect: () => void;
+  onboarding?: boolean;
 }) {
   const { data, execute, mode, user, logout, resetDemo } = useStore();
-  const [b, setB] = useState(data.business),
+  const [b, setB] = useState(() => ({
+      ...data.business,
+      phone: data.business.phone || user?.phoneNumber || '',
+      email: data.business.email || user?.email || '',
+    })),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(''),
     [confirm, setConfirm] = useState(false);
@@ -41,7 +48,12 @@ export function Settings({
     setError('');
     setBusy(true);
     try {
-      await execute({ type: 'saveBusiness', business: b });
+      const business = { ...b, setupCompleted: onboarding || Boolean(b.setupCompleted) };
+      if (business.setupCompleted) {
+        const problem = businessSetupError(business);
+        if (problem) throw new Error(problem);
+      }
+      await execute({ type: 'saveBusiness', business });
       notify('Business settings saved. New invoices will use these details.');
     } catch (e) {
       setError((e as Error).message);
@@ -52,8 +64,12 @@ export function Settings({
   return (
     <>
       <SectionTitle
-        title="Business settings"
-        subtitle="Make this workspace feel like your business."
+        title={onboarding ? 'Set up your business' : 'Business settings'}
+        subtitle={
+          onboarding
+            ? 'Enter your real account details to open your billing workspace.'
+            : 'Make this workspace feel like your business.'
+        }
       />
       <div className="settings-layout">
         <form onSubmit={save}>
@@ -73,8 +89,12 @@ export function Settings({
                 <Field label="Registered business name *">
                   <input required value={b.name} onChange={(e) => set('name', e.target.value)} />
                 </Field>
-                <Field label="GSTIN" hint="Required before issuing GST tax invoices.">
+                <Field
+                  label={onboarding || b.setupCompleted ? 'GSTIN *' : 'GSTIN'}
+                  hint="Required before issuing GST tax invoices."
+                >
                   <input
+                    required={onboarding || b.setupCompleted}
                     maxLength={15}
                     value={b.gstin}
                     placeholder="08XXXXXXXXXX1ZX"
@@ -92,23 +112,32 @@ export function Settings({
                     onChange={(e) => set('prefix', e.target.value.toUpperCase())}
                   />
                 </Field>
-                <Field label="Business email">
+                <Field
+                  label={onboarding || b.setupCompleted ? 'Business email *' : 'Business email'}
+                >
                   <input
+                    required={onboarding || b.setupCompleted}
                     type="email"
                     value={b.email}
                     onChange={(e) => set('email', e.target.value)}
                   />
                 </Field>
-                <Field label="Phone">
+                <Field label={onboarding || b.setupCompleted ? 'Phone *' : 'Phone'}>
                   <input
+                    required={onboarding || b.setupCompleted}
                     type="tel"
                     value={b.phone}
                     onChange={(e) => set('phone', e.target.value)}
                   />
                 </Field>
               </div>
-              <Field label="Registered address">
+              <Field
+                label={
+                  onboarding || b.setupCompleted ? 'Registered address *' : 'Registered address'
+                }
+              >
                 <textarea
+                  required={onboarding || b.setupCompleted}
                   rows={3}
                   value={b.address}
                   onChange={(e) => set('address', e.target.value)}
@@ -123,7 +152,7 @@ export function Settings({
                 <CreditCard size={20} />
                 <div>
                   <h3>Payment details</h3>
-                  <p>Help your customers pay you on time</p>
+                  <p>Optional: add bank or UPI instructions for your invoices</p>
                 </div>
               </div>
             </div>
@@ -163,7 +192,7 @@ export function Settings({
             <p>Issued invoices keep the business details they were created with.</p>
             <button className="button primary" disabled={busy}>
               <Save size={16} />
-              {busy ? 'Saving…' : 'Save changes'}
+              {busy ? 'Saving…' : onboarding ? 'Save details & open workspace' : 'Save changes'}
             </button>
           </div>
         </form>
@@ -216,6 +245,7 @@ export function Settings({
               Download backup
             </button>
           </section>
+          {mode === 'cloud' && <DeleteAccount />}
           {mode === 'demo' && (
             <section className="panel backup-card">
               <h3>Explore from a fresh start</h3>

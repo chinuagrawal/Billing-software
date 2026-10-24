@@ -1,4 +1,4 @@
-import type { Invoice, LineItem, Workspace, Command } from '../types';
+import type { Invoice, LineItem, Workspace, Command, Business } from '../types';
 
 export const STATES: Record<string, string> = {
   '01': 'Jammu and Kashmir',
@@ -132,12 +132,34 @@ function insist(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
 }
 const finite = (n: number) => Number.isFinite(n);
+export function businessSetupError(b: Business): string {
+  if (!b.name.trim()) return 'Enter your registered business name.';
+  if (!STATES[b.state]) return 'Select your business state.';
+  if (!validGstin(b.gstin) || b.gstin.slice(0, 2) !== b.state)
+    return 'Enter a valid GSTIN matching your business state.';
+  if (!b.address.trim()) return 'Enter your registered address.';
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(b.email)) return 'Enter a valid business email.';
+  if (!/^\+?\d{10,15}$/.test(b.phone.replace(/[\s()-]/g, '')))
+    return 'Enter a valid business phone number.';
+  if (!/^[A-Z0-9-]{1,5}$/.test(b.prefix))
+    return 'Choose an invoice prefix of 1–5 uppercase letters, numbers or hyphens.';
+  if (
+    (b.bankName || b.account || b.ifsc) &&
+    !(b.bankName.trim() && b.account.trim() && /^[A-Z]{4}0[A-Z0-9]{6}$/.test(b.ifsc))
+  )
+    return 'Complete the bank name, account number and valid IFSC, or leave all bank fields empty.';
+  return '';
+}
 export function applyCommand(current: Workspace, command: Command): Workspace {
   const state = structuredClone(current);
   const log = (action: string, detail: string) =>
     state.audit.unshift({ id: uid(), action, detail, at: new Date().toISOString() });
   if (command.type === 'saveBusiness') {
     const b = command.business;
+    if (b.setupCompleted) {
+      const problem = businessSetupError(b);
+      insist(!problem, problem);
+    }
     insist(b.name.trim() && STATES[b.state], 'Business name and state are required.');
     insist(
       /^[A-Z0-9-]{1,5}$/.test(b.prefix),

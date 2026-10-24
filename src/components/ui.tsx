@@ -105,6 +105,9 @@ export function StateSelect({
 }) {
   return (
     <select id={id} value={value} onChange={(e) => onChange(e.target.value)}>
+      <option value="" disabled>
+        Select a state
+      </option>
       {Object.entries(STATES)
         .sort((a, b) => a[1].localeCompare(b[1]))
         .map(([code, name]) => (

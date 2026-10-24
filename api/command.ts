@@ -6,7 +6,7 @@ import { requestSchema } from '../server/schema';
 import { CommandError, executeServerCommand } from '../server/commands';
 
 const MAX_BODY = 200_000;
-function services() {
+export function services() {
   const projectId = process.env.FIREBASE_PROJECT_ID;
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
   const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
@@ -18,7 +18,7 @@ function services() {
     initializeApp({ credential: cert({ projectId, clientEmail, privateKey }) }, 'billing-server');
   return { auth: getAuth(app), database: getFirestore(app) };
 }
-async function readBody(req: IncomingMessage & { body?: unknown }) {
+export async function readBody(req: IncomingMessage & { body?: unknown }) {
   if (req.body !== undefined) {
     const raw = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
     if (Buffer.byteLength(raw) > MAX_BODY) throw new Error('BODY_TOO_LARGE');

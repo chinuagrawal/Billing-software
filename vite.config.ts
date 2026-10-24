@@ -1,6 +1,7 @@
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import commandHandler from './api/command';
+import accountHandler from './api/account';
 export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
@@ -18,6 +19,9 @@ export default defineConfig(({ mode }) => ({
         }
         server.middlewares.use('/api/command', (req, res) => {
           void commandHandler(req, res);
+        });
+        server.middlewares.use('/api/account', (req, res) => {
+          void accountHandler(req, res);
         });
       },
     },

@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import type { Customer, Invoice, Product } from './types';
 import { useStore } from './lib/store';
-import { status } from './lib/billing';
+import { status, STATES } from './lib/billing';
 import { Modal, Avatar } from './components/ui';
 import { Dashboard } from './components/Dashboard';
 import { Customers, Inventory, Invoices, Payments } from './components/Records';
@@ -117,6 +117,19 @@ export default function App() {
     dialog?.type === 'view'
       ? data.invoices.find((i) => i.id === dialog.invoice.id) || dialog.invoice
       : null;
+  if (mode === 'cloud' && !loading && !error && !data.business.setupCompleted) {
+    return (
+      <div className="onboarding-shell">
+        <div className="onboarding-label">ACCOUNT SETUP · B2B & B2C BILLING</div>
+        <Settings
+          key={user?.uid}
+          onboarding
+          notify={notify}
+          onConnect={() => setDialog({ type: 'auth' })}
+        />
+      </div>
+    );
+  }
   return (
     <div className="app-shell">
       {mobile && <div className="sidebar-scrim" onClick={() => setMobile(false)} />}
@@ -135,8 +148,8 @@ export default function App() {
         <button className="workspace-switch" onClick={() => navigate('Settings')}>
           <span className="workspace-monogram">AE</span>
           <div>
-            <strong>{data.business.name}</strong>
-            <span>Rajasthan, India</span>
+            <strong>{data.business.name || 'Your business'}</strong>
+            <span>{STATES[data.business.state] || 'Select your state'}, India</span>
           </div>
           <ChevronDown size={14} />
         </button>

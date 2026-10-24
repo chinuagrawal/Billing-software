@@ -45,6 +45,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             setMode(u ? 'cloud' : 'demo');
             setLoading(Boolean(u));
             if (!u) {
+              setError('');
               const d = readLocal();
               ref.current = d;
               setData(d);

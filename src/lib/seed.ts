@@ -17,7 +17,21 @@ export const defaultBusiness: Business = {
   prefix: 'AE',
 };
 export const emptyWorkspace = (): Workspace => ({
-  business: { ...defaultBusiness },
+  business: {
+    name: '',
+    gstin: '',
+    state: '',
+    address: '',
+    email: '',
+    phone: '',
+    bankName: '',
+    account: '',
+    ifsc: '',
+    upi: '',
+    terms: '',
+    prefix: '',
+    setupCompleted: false,
+  },
   customers: [],
   products: [],
   invoices: [],

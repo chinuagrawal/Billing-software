@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Firestore } from 'firebase-admin/firestore';
 import { executeServerCommand } from './commands';
-import { emptyWorkspace } from '../src/lib/seed';
+import { defaultBusiness } from '../src/lib/seed';
 import type { Command, Product } from '../src/types';
 
 function databaseFixture() {
@@ -109,8 +109,16 @@ describe('trusted server commands', () => {
   });
   it('creates initial business settings even when they equal the default', async () => {
     const { database, records } = databaseFixture();
-    const business = emptyWorkspace().business;
+    const business = { ...defaultBusiness };
     await executeServerCommand(database, 'owner', 'request-1', { type: 'saveBusiness', business });
     expect(records.get('workspaces/owner/settings/business')).toEqual(business);
+  });
+  it('blocks all mutations after account deletion starts', async () => {
+    const { database, records } = databaseFixture();
+    records.set('accountLifecycle/owner', { status: 'deleting' });
+    await expect(
+      executeServerCommand(database, 'owner', 'request-1', { type: 'saveProduct', product }),
+    ).rejects.toThrow('deletion');
+    expect(records.size).toBe(1);
   });
 });

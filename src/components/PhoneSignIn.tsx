@@ -1,13 +1,24 @@
 import { useEffect, useRef, useState } from 'react';
-import { RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
-import type { ConfirmationResult } from 'firebase/auth';
+import {
+  RecaptchaVerifier,
+  signInWithPhoneNumber,
+  PhoneAuthProvider,
+  reauthenticateWithCredential,
+} from 'firebase/auth';
+import type { ConfirmationResult, User } from 'firebase/auth';
 import { Smartphone } from 'lucide-react';
 import { auth } from '../lib/firebase';
 import { normalizePhone, phoneAuthError } from '../lib/phoneAuth';
 import { Field } from './ui';
 
-export function PhoneSignIn({ onDone }: { onDone: () => void }) {
-  const [phone, setPhone] = useState('');
+export function PhoneSignIn({
+  onDone,
+  reauthenticate,
+}: {
+  onDone: () => void;
+  reauthenticate?: User;
+}) {
+  const [phone, setPhone] = useState(reauthenticate?.phoneNumber || '');
   const [sentTo, setSentTo] = useState('');
   const [code, setCode] = useState('');
   const [confirmation, setConfirmation] = useState<ConfirmationResult | null>(null);
@@ -81,7 +92,12 @@ export function PhoneSignIn({ onDone }: { onDone: () => void }) {
     setBusy(true);
     setError('');
     try {
-      await confirmation.confirm(code);
+      if (reauthenticate)
+        await reauthenticateWithCredential(
+          reauthenticate,
+          PhoneAuthProvider.credential(confirmation.verificationId, code),
+        );
+      else await confirmation.confirm(code);
       if (mounted.current) onDone();
     } catch (e) {
       if (mounted.current) setError(phoneAuthError(e));
@@ -102,8 +118,12 @@ export function PhoneSignIn({ onDone }: { onDone: () => void }) {
         <span className="connection-icon">
           <Smartphone size={26} />
         </span>
-        <h3>Sign in with your mobile</h3>
-        <p>Access your B2B and B2C billing workspace with a one-time SMS code.</p>
+        <h3>{reauthenticate ? 'Verify your identity' : 'Sign in with your mobile'}</h3>
+        <p>
+          {reauthenticate
+            ? 'Confirm access to your account phone before continuing.'
+            : 'Access your B2B and B2C billing workspace with a one-time SMS code.'}
+        </p>
       </div>
       <Field
         label="Mobile number"
@@ -114,7 +134,7 @@ export function PhoneSignIn({ onDone }: { onDone: () => void }) {
           autoComplete="tel"
           required
           value={phone}
-          disabled={busy || Boolean(confirmation)}
+          disabled={busy || Boolean(confirmation) || Boolean(reauthenticate)}
           placeholder="9876543210 or +919876543210"
           onChange={(e) => setPhone(e.target.value)}
         />
@@ -173,7 +193,9 @@ export function PhoneSignIn({ onDone }: { onDone: () => void }) {
         {busy
           ? 'Please wait…'
           : confirmation
-            ? 'Verify OTP & sign in'
+            ? reauthenticate
+              ? 'Verify identity'
+              : 'Verify OTP & sign in'
             : remaining > 0
               ? `Send OTP in ${remaining}s`
               : 'Send OTP'}
@@ -183,23 +205,27 @@ export function PhoneSignIn({ onDone }: { onDone: () => void }) {
           <button type="button" disabled={busy || remaining > 0} onClick={() => void send()}>
             {remaining ? `Resend in ${remaining}s` : 'Resend OTP'}
           </button>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => {
-              setConfirmation(null);
-              setCode('');
-              setError('');
-            }}
-          >
-            Change mobile number
-          </button>
+          {!reauthenticate && (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                setConfirmation(null);
+                setCode('');
+                setError('');
+              }}
+            >
+              Change mobile number
+            </button>
+          )}
         </div>
       )}
-      <p className="form-hint">
-        First sign-in creates an empty workspace. Always use the same sign-in method to access your
-        existing records.
-      </p>
+      {!reauthenticate && (
+        <p className="form-hint">
+          First sign-in creates an empty workspace. Always use the same sign-in method to access
+          your existing records.
+        </p>
+      )}
     </form>
   );
 }

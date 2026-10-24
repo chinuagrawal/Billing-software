@@ -16,6 +16,9 @@ export async function executeServerCommand(
   const root = database.collection('workspaces').doc(ownerId);
   const commandHash = createHash('sha256').update(JSON.stringify(command)).digest('hex');
   return database.runTransaction(async (tx) => {
+    const lifecycle = await tx.get(database.collection('accountLifecycle').doc(ownerId));
+    if (lifecycle.exists)
+      throw new CommandError('Account deletion has started. No further changes are allowed.');
     const receiptRef = root.collection('operations').doc(requestId);
     const receipt = await tx.get(receiptRef);
     if (receipt.exists) {

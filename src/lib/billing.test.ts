@@ -10,7 +10,7 @@ import {
   csv,
   today,
 } from './billing';
-import { emptyWorkspace } from './seed';
+import { emptyWorkspace, defaultBusiness } from './seed';
 import type { Invoice, LineItem, Workspace } from '../types';
 const line: LineItem = {
   productId: 'p1',
@@ -34,7 +34,7 @@ function gst(prefix: string) {
 function fixture(): { state: Workspace; invoice: Invoice } {
   const state = emptyWorkspace();
   state.business = {
-    ...state.business,
+    ...defaultBusiness,
     gstin: gst('08ABCDE1234F1Z'),
     address: 'Jaipur, Rajasthan',
   };
