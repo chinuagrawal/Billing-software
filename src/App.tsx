@@ -213,6 +213,15 @@ export default function App() {
             <strong>{page}</strong>
           </div>
           <div className="topbar-actions">
+            {!user && (
+              <button
+                className="button primary sign-in-button"
+                onClick={() => setDialog({ type: 'auth' })}
+              >
+                <Cloud size={16} />
+                Sign in
+              </button>
+            )}
             <div className="global-search">
               <Search size={16} />
               <input

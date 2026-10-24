@@ -68,7 +68,7 @@ Firebase web configuration is intended for the browser; Firestore rules provide 
 
 ### Phone OTP setup for this project
 
-The local web configuration is set to **billing-software-atd** in the Git-ignored `.env.local`. `.firebaserc` selects that project for Firebase CLI commands. For Vercel, copy the six `VITE_FIREBASE_*` values into the project's environment settings and redeploy; the local file is never uploaded automatically.
+The local web configuration is set to **billing-software-atd** in the Git-ignored `.env.local`. `.firebaserc` selects that project for Firebase CLI commands. The public web configuration is also committed in `.env.production` so Vercel production builds can show phone login without relying on the local file. Vercel environment variables override these defaults. Never add server credentials to `.env.production`.
 
 1. Enable Phone sign-in in the [project Authentication console](https://console.firebase.google.com/project/billing-software-atd/authentication/providers).
 2. Configure SMS region policy to allow India. Real verification SMS requires a linked billing account; charges and quotas apply.

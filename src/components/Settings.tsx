@@ -17,7 +17,7 @@ import {
   LockKeyhole,
 } from 'lucide-react';
 import { useStore } from '../lib/store';
-import { auth, firebaseConfigured } from '../lib/firebase';
+import { auth, firebaseConfigured, missingFirebaseConfig } from '../lib/firebase';
 import { download, today } from '../lib/billing';
 import { Field, SectionTitle, StateSelect } from './ui';
 import { PhoneSignIn } from './PhoneSignIn';
@@ -280,6 +280,11 @@ function EmailAuthForm({ onDone }: { onDone: () => void }) {
           <Cloud size={28} />
         </span>
         <h3>Your cloud workspace is ready to connect</h3>
+        <div className="error-banner" role="alert">
+          This build is missing: {missingFirebaseConfig.join(', ')}. Add these exact names to
+          Vercel's Production environment and redeploy. Server-only FIREBASE_* values do not replace
+          the VITE_FIREBASE_* browser configuration.
+        </div>
         <p>
           Add your Firebase web app configuration to the project’s environment settings, enable
           Phone sign-in, and deploy the included Firestore rules.

@@ -3298,3 +3298,9 @@ tbody tr:hover {
   padding: 0 24px 24px;
   justify-content: center;
 }
+
+@media (max-width: 600px) {
+  .sign-in-button + .global-search {
+    display: none;
+  }
+}
