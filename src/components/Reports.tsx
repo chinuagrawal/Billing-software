@@ -1,8 +1,18 @@
 import { useState } from 'react';
 import { Download, FileSpreadsheet, BarChart3, ArrowUpRight, ShieldCheck } from 'lucide-react';
 import { useStore } from '../lib/store';
-import { balance, csv, download, invoiceTotals, money, today, invoiceProfit } from '../lib/billing';
+import {
+  balance,
+  csv,
+  download,
+  invoiceTotals,
+  money,
+  today,
+  invoiceProfit,
+  totals,
+} from '../lib/billing';
 import { SectionTitle, Empty } from './ui';
+import { Gstr1Export } from './Gstr1Export';
 export function Reports() {
   const { data } = useStore();
   const [from, setFrom] = useState(today().slice(0, 7) + '-01'),
@@ -27,7 +37,7 @@ export function Reports() {
   const knownProfit = profitRows.reduce((sum, row) => sum + (row.result?.profit || 0), 0);
   const taxRows = invoices.flatMap((i) =>
     i.items.map((item) => {
-      const gross = item.price * item.qty * (1 - item.discount / 100);
+      const gross = totals([item], i.business.state !== i.placeOfSupply).taxable;
       return [
         i.number,
         i.date,
@@ -68,6 +78,7 @@ export function Reports() {
           </div>
         }
       />
+      <Gstr1Export from={from} to={to} />
       <div className="stats-grid report-stats">
         {[
           ['Taxable sales', sums.taxable],
