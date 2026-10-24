@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   applyCommand,
+  invoiceProfit,
   totals,
   fy,
   validGstin,
@@ -301,5 +302,67 @@ describe('payments and exports', () => {
   it('quotes CSV values and neutralizes spreadsheet formulas', () => {
     expect(csv([['=HYPERLINK("bad")', 'a,b', 'line\n2']])).toContain('"\'=HYPERLINK(""bad"")"');
     expect(csv([['a,b']])).toBe('\uFEFF"a,b"');
+  });
+});
+
+describe('Historical purchase costing', () => {
+  it('averages remaining stock and freezes issued profit across later purchases and edits', () => {
+    let { state, invoice } = fixture();
+    state = applyCommand(state, {
+      type: 'purchase',
+      purchase: {
+        id: 'buy1',
+        productId: 'p1',
+        quantity: 10,
+        unitCost: 700,
+        date: today(),
+        reference: 'Supplier bill 1',
+      },
+    });
+    expect(state.products[0].cost).toBe(600);
+    expect(state.products[0].stock).toBe(20);
+    invoice.items[0].costTotal = 1; // Client cost is never authoritative.
+    state = applyCommand(state, { type: 'saveInvoice', invoice, issue: true });
+    expect(invoiceProfit(state.invoices[0])).toEqual({ sales: 1800, cost: 1200, profit: 600 });
+    state = applyCommand(state, {
+      type: 'purchase',
+      purchase: {
+        id: 'buy2',
+        productId: 'p1',
+        quantity: 2,
+        unitCost: 800,
+        date: today(),
+        reference: 'Supplier bill 2',
+      },
+    });
+    expect(state.products[0].cost).toBe(620);
+    expect(invoiceProfit(state.invoices[0])?.profit).toBe(600);
+    state = applyCommand(state, {
+      type: 'saveProduct',
+      product: { ...state.products[0], cost: 1 },
+    });
+    expect(state.products[0].cost).toBe(620);
+    state = applyCommand(state, { type: 'void', id: invoice.id });
+    expect(state.products[0].stock).toBe(22);
+    expect(state.products[0].cost).toBeCloseTo((20 * 620 + 1200) / 22, 6);
+    expect(invoiceProfit(state.invoices[0])).toBeNull();
+  });
+  it('does not invent historical costs or allow duplicate/invalid purchases', () => {
+    const { state, invoice } = fixture();
+    expect(invoiceProfit({ ...invoice, status: 'issued' })).toBeNull();
+    const purchase = {
+      id: 'buy1',
+      productId: 'p1',
+      quantity: 1,
+      unitCost: 0,
+      date: today(),
+      reference: 'Free stock',
+    };
+    const next = applyCommand(state, { type: 'purchase', purchase });
+    expect(next.purchases).toHaveLength(1);
+    expect(() => applyCommand(next, { type: 'purchase', purchase })).toThrow('already');
+    expect(() =>
+      applyCommand(state, { type: 'purchase', purchase: { ...purchase, quantity: -1 } }),
+    ).toThrow();
   });
 });

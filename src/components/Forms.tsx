@@ -194,12 +194,16 @@ export function ProductForm({
             onChange={(e) => set('price', Number(e.target.value))}
           />
         </Field>
-        <Field label="Purchase cost ₹">
+        <Field
+          label={initial ? 'Average stock cost ₹' : 'Opening unit cost ₹'}
+          hint="Enter cost excluding recoverable GST. Record later purchases through Adjust stock."
+        >
           <input
             required
             type="number"
             step="0.01"
             min="0"
+            disabled={Boolean(initial)}
             value={p.cost}
             onChange={(e) => set('cost', Number(e.target.value))}
           />
@@ -407,6 +411,10 @@ export function StockForm({
   onDone: (s: string) => void;
   onCancel: () => void;
 }) {
+  const [purchaseId] = useState(uid);
+  const [kind, setKind] = useState('purchase');
+  const [unitCost, setUnitCost] = useState(product.cost);
+  const [date, setDate] = useState(today());
   const { execute } = useStore();
   const [quantity, setQuantity] = useState(1),
     [reason, setReason] = useState(''),
@@ -419,8 +427,24 @@ export function StockForm({
         e.preventDefault();
         setBusy(true);
         try {
-          await execute({ type: 'stock', id: product.id, quantity, reason });
-          onDone('Stock adjustment recorded.');
+          if (kind === 'purchase')
+            await execute({
+              type: 'purchase',
+              purchase: {
+                id: purchaseId,
+                productId: product.id,
+                quantity,
+                unitCost,
+                date,
+                reference: reason,
+              },
+            });
+          else await execute({ type: 'stock', id: product.id, quantity, reason });
+          onDone(
+            kind === 'purchase'
+              ? 'Purchase received; average cost updated.'
+              : 'Stock adjustment recorded.',
+          );
         } catch (e) {
           setError((e as Error).message);
         } finally {
@@ -434,6 +458,45 @@ export function StockForm({
           {product.stock} {product.unit}
         </strong>
       </div>
+      <Field label="Stock entry type">
+        <select value={kind} onChange={(e) => setKind(e.target.value)}>
+          <option value="purchase">New purchase</option>
+          <option value="adjustment">Stock correction</option>
+        </select>
+      </Field>
+      {kind === 'purchase' && (
+        <>
+          <Field
+            label="Purchase date"
+            hint="Stock and cost update when recorded. Enter purchases before issuing related sales."
+          >
+            <input
+              required
+              type="date"
+              max={today()}
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+            />
+          </Field>
+          <Field
+            label="Purchase unit cost ₹"
+            hint="Exclude recoverable GST; include costs you cannot recover."
+          >
+            <input
+              required
+              type="number"
+              min="0"
+              step="0.01"
+              value={unitCost}
+              onChange={(e) => setUnitCost(Number(e.target.value))}
+            />
+          </Field>
+          <p>
+            Current average cost: {money(product.cost)} per {product.unit}. New purchases update the
+            weighted average.
+          </p>
+        </>
+      )}
       <Field
         label="Quantity change"
         hint="Use a positive number to add stock or a negative number to remove it."
@@ -442,12 +505,12 @@ export function StockForm({
           required
           type="number"
           step="0.01"
-          min={-product.stock}
+          min={kind === 'purchase' ? 0.01 : -product.stock}
           value={quantity}
           onChange={(e) => setQuantity(Number(e.target.value))}
         />
       </Field>
-      <Field label="Reason *">
+      <Field label={kind === 'purchase' ? 'Supplier / bill reference *' : 'Reason *'}>
         <textarea
           required
           placeholder="e.g. New purchase received, stock count correction…"

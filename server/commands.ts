@@ -62,16 +62,23 @@ export async function executeServerCommand(
       const previous = await tx.get(root.collection('customers').doc(command.customer.id));
       if (previous.exists) state.customers = [previous.data() as Workspace['customers'][number]];
     }
+    if (command.type === 'purchase') {
+      const previous = await tx.get(root.collection('purchases').doc(command.purchase.id));
+      if (previous.exists)
+        state.purchases = [previous.data() as NonNullable<Workspace['purchases']>[number]];
+    }
     const productIds =
       command.type === 'saveInvoice'
         ? command.invoice.items.map((i) => i.productId)
         : command.type === 'void'
           ? state.invoices[0]?.items.map((i) => i.productId) || []
-          : command.type === 'stock'
-            ? [command.id]
-            : command.type === 'saveProduct'
-              ? [command.product.id]
-              : [];
+          : command.type === 'purchase'
+            ? [command.purchase.productId]
+            : command.type === 'stock'
+              ? [command.id]
+              : command.type === 'saveProduct'
+                ? [command.product.id]
+                : [];
     for (const id of new Set(productIds)) {
       const product = await tx.get(root.collection('products').doc(id));
       if (product.exists) state.products.push(product.data() as Workspace['products'][number]);
@@ -94,9 +101,16 @@ export async function executeServerCommand(
     } catch (error) {
       throw new CommandError((error as Error).message);
     }
-    for (const name of ['customers', 'products', 'invoices', 'payments', 'audit'] as const) {
-      for (const record of next[name]) {
-        const old = state[name].find((x) => x.id === record.id);
+    for (const name of [
+      'customers',
+      'products',
+      'invoices',
+      'payments',
+      'audit',
+      'purchases',
+    ] as const) {
+      for (const record of next[name] || []) {
+        const old = (state[name] || []).find((x) => x.id === record.id);
         if (JSON.stringify(record) !== JSON.stringify(old))
           tx.set(root.collection(name).doc(record.id), record);
       }

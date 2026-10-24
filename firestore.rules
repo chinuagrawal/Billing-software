@@ -5,7 +5,7 @@ service cloud.firestore {
     // Each authenticated owner has an isolated workspace. No public data access.
     match /workspaces/{ownerId}/{collection}/{documentId} {
       allow read: if owner(ownerId)
-        && collection in ['settings', 'products', 'customers', 'invoices', 'payments', 'audit', 'counters'];
+        && collection in ['settings', 'products', 'purchases', 'customers', 'invoices', 'payments', 'audit', 'counters'];
       // All writes go through the authenticated Vercel API and Admin SDK.
       allow write: if false;
     }

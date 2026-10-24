@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Download, FileSpreadsheet, BarChart3, ArrowUpRight, ShieldCheck } from 'lucide-react';
 import { useStore } from '../lib/store';
-import { balance, csv, download, invoiceTotals, money, today } from '../lib/billing';
+import { balance, csv, download, invoiceTotals, money, today, invoiceProfit } from '../lib/billing';
 import { SectionTitle, Empty } from './ui';
 export function Reports() {
   const { data } = useStore();
@@ -23,6 +23,8 @@ export function Reports() {
     },
     { taxable: 0, cgst: 0, sgst: 0, igst: 0, total: 0 },
   );
+  const profitRows = invoices.map((i) => ({ invoice: i, result: invoiceProfit(i) }));
+  const knownProfit = profitRows.reduce((sum, row) => sum + (row.result?.profit || 0), 0);
   const taxRows = invoices.flatMap((i) =>
     i.items.map((item) => {
       const gross = item.price * item.qty * (1 - item.discount / 100);
@@ -83,6 +85,96 @@ export function Reports() {
           </div>
         ))}
       </div>
+      <section className="panel">
+        <div className="panel-header">
+          <div>
+            <h3>Gross profit · {money(knownProfit)}</h3>
+            <p>
+              Sales after discounts less recorded stock cost, excluding GST. Before operating
+              expenses. {profitRows.filter((r) => !r.result).length} invoices have unavailable
+              historical cost and are excluded.
+            </p>
+          </div>
+          <button
+            className="button secondary"
+            onClick={() =>
+              download(
+                `gross-profit-${from}-${to}.csv`,
+                csv([
+                  ['Invoice', 'Date', 'Taxable sales', 'Stock cost', 'Gross profit'],
+                  ...profitRows.map(({ invoice: i, result: r }) => [
+                    i.number,
+                    i.date,
+                    invoiceTotals(i).taxable,
+                    r?.cost ?? 'Unavailable',
+                    r?.profit ?? 'Unavailable',
+                  ]),
+                ]),
+              )
+            }
+          >
+            Export profit
+          </button>
+        </div>
+        <div className="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Invoice</th>
+                <th>Sales excl. GST</th>
+                <th>Stock cost</th>
+                <th>Gross profit</th>
+              </tr>
+            </thead>
+            <tbody>
+              {profitRows.map(({ invoice: i, result: r }) => (
+                <tr key={i.id}>
+                  <td>{i.number}</td>
+                  <td>{money(invoiceTotals(i).taxable)}</td>
+                  <td>{r ? money(r.cost) : 'Unavailable'}</td>
+                  <td>{r ? money(r.profit) : 'Unavailable'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <section className="panel">
+        <div className="panel-header">
+          <div>
+            <h3>Purchase history</h3>
+            <p>
+              Recorded purchases in the selected date range. Stock corrections retain average cost.
+            </p>
+          </div>
+        </div>
+        <div className="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Product</th>
+                <th>Quantity</th>
+                <th>Unit cost</th>
+                <th>Reference</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(data.purchases || [])
+                .filter((p) => p.date >= from && p.date <= to)
+                .map((p) => (
+                  <tr key={p.id}>
+                    <td>{p.date}</td>
+                    <td>{data.products.find((x) => x.id === p.productId)?.name || p.productId}</td>
+                    <td>{p.quantity}</td>
+                    <td>{money(p.unitCost)}</td>
+                    <td>{p.reference}</td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
       <div className="analytics-grid">
         <section className="panel">
           <div className="panel-header">

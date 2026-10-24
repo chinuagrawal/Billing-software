@@ -68,6 +68,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       'settings',
       'customers',
       'products',
+      'purchases',
       'invoices',
       'payments',
       'audit',

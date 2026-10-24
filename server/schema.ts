@@ -58,6 +58,7 @@ const product = z
   .strict();
 const item = z
   .object({
+    costTotal: amount.optional(),
     productId: id,
     name: text,
     hsn: z.string().max(8),
@@ -99,6 +100,21 @@ const payment = z
   })
   .strict();
 export const commandSchema = z.discriminatedUnion('type', [
+  z
+    .object({
+      type: z.literal('purchase'),
+      purchase: z
+        .object({
+          id,
+          productId: id,
+          quantity: z.number().positive().max(1e9),
+          unitCost: amount,
+          date,
+          reference: text,
+        })
+        .strict(),
+    })
+    .strict(),
   z.object({ type: z.literal('saveCustomer'), customer }).strict(),
   z.object({ type: z.literal('saveProduct'), product }).strict(),
   z.object({ type: z.literal('saveBusiness'), business }).strict(),

@@ -40,7 +40,16 @@ export interface Product {
   unit: string;
   color: string;
 }
+export interface Purchase {
+  id: string;
+  productId: string;
+  quantity: number;
+  unitCost: number;
+  date: string;
+  reference: string;
+}
 export interface LineItem {
+  costTotal?: number;
   productId: string;
   name: string;
   hsn: string;
@@ -83,6 +92,7 @@ export interface Audit {
   at: string;
 }
 export interface Workspace {
+  purchases?: Purchase[];
   business: Business;
   customers: Customer[];
   products: Product[];
@@ -92,6 +102,7 @@ export interface Workspace {
   counters: Record<string, number>;
 }
 export type Command =
+  | { type: 'purchase'; purchase: Purchase }
   | { type: 'saveCustomer'; customer: Customer }
   | { type: 'saveProduct'; product: Product }
   | { type: 'saveBusiness'; business: Business }

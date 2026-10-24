@@ -103,6 +103,12 @@ export function totals(items: LineItem[], interstate: boolean) {
   };
 }
 export const invoiceTotals = (i: Invoice) => totals(i.items, i.business.state !== i.placeOfSupply);
+export function invoiceProfit(i: Invoice) {
+  if (i.status !== 'issued' || i.items.some((x) => x.costTotal === undefined)) return null;
+  const cost = round(i.items.reduce((sum, x) => sum + x.costTotal!, 0));
+  const sales = invoiceTotals(i).taxable;
+  return { cost, sales, profit: round(sales - cost) };
+}
 export const balance = (i: Invoice) =>
   i.status === 'issued' ? round(invoiceTotals(i).total - i.paid) : 0;
 export const status = (i: Invoice) =>
@@ -204,10 +210,45 @@ export function applyCommand(current: Workspace, command: Command): Workspace {
       'This SKU is already in use.',
     );
     state.products = [
-      { ...p, stock: old?.stock ?? p.stock },
+      { ...p, cost: old?.cost ?? p.cost, stock: old?.stock ?? p.stock },
       ...state.products.filter((x) => x.id !== p.id),
     ];
     log('Product saved', p.name);
+  }
+  if (command.type === 'purchase') {
+    const purchase = command.purchase;
+    const p = state.products.find((x) => x.id === purchase.productId);
+    insist(
+      p &&
+        finite(purchase.quantity) &&
+        purchase.quantity > 0 &&
+        finite(purchase.unitCost) &&
+        purchase.unitCost >= 0,
+      'Enter a valid purchase quantity and unit cost.',
+    );
+    insist(
+      /^\d{4}-\d{2}-\d{2}$/.test(purchase.date) && purchase.date <= today(),
+      'Choose a purchase date no later than today.',
+    );
+    insist(
+      !(state.purchases || []).some((x) => x.id === purchase.id),
+      'This purchase has already been recorded.',
+    );
+    const newStock = round(p.stock + purchase.quantity);
+    insist(
+      newStock > p.stock && Number.isSafeInteger(Math.round(newStock * purchase.unitCost * 100)),
+      'Purchase exceeds supported quantity or value.',
+    );
+    p.cost =
+      Math.round(
+        ((p.stock * p.cost + purchase.quantity * purchase.unitCost) / newStock) * 1000000,
+      ) / 1000000;
+    p.stock = newStock;
+    state.purchases = [structuredClone(purchase), ...(state.purchases || [])];
+    log(
+      'Purchase received',
+      `${p.name}: +${purchase.quantity} at ${money(purchase.unitCost)} · ${purchase.reference}`,
+    );
   }
   if (command.type === 'stock') {
     const p = state.products.find((x) => x.id === command.id);
@@ -258,6 +299,9 @@ export function applyCommand(current: Workspace, command: Command): Workspace {
     );
     i.business = structuredClone(state.business);
     i.paid = 0;
+    i.items.forEach((item) => {
+      delete item.costTotal;
+    });
     if (command.issue) {
       insist(
         validGstin(i.business.gstin) &&
@@ -279,6 +323,10 @@ export function applyCommand(current: Workspace, command: Command): Workspace {
         insist(p && p.stock >= qty, `Insufficient stock for ${p?.name || 'a removed product'}.`);
         p.stock = round(p.stock - qty);
       }
+      i.items.forEach((item) => {
+        const p = state.products.find((x) => x.id === item.productId)!;
+        item.costTotal = round(item.qty * p.cost);
+      });
       const financialYear = fy(i.date),
         next = (state.counters[financialYear] || 0) + 1;
       insist(next <= 99999, 'Invoice sequence limit reached for this financial year.');
@@ -328,7 +376,14 @@ export function applyCommand(current: Workspace, command: Command): Workspace {
     i.status = 'void';
     i.items.forEach((item) => {
       const p = state.products.find((x) => x.id === item.productId);
-      if (p) p.stock = round(p.stock + item.qty);
+      if (p) {
+        const restored = round(p.stock + item.qty);
+        p.cost =
+          Math.round(
+            ((p.stock * p.cost + (item.costTotal ?? item.qty * p.cost)) / restored) * 1000000,
+          ) / 1000000;
+        p.stock = restored;
+      }
     });
     log('Invoice voided', `${i.number} · stock restored`);
   }

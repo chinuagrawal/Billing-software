@@ -55,6 +55,7 @@ var product = z.object({
   color: text
 }).strict();
 var item = z.object({
+  costTotal: amount.optional(),
   productId: id,
   name: text,
   hsn: z.string().max(8),
@@ -91,6 +92,17 @@ var payment = z.object({
   reference: text
 }).strict();
 var commandSchema = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("purchase"),
+    purchase: z.object({
+      id,
+      productId: id,
+      quantity: z.number().positive().max(1e9),
+      unitCost: amount,
+      date,
+      reference: text
+    }).strict()
+  }).strict(),
   z.object({ type: z.literal("saveCustomer"), customer }).strict(),
   z.object({ type: z.literal("saveProduct"), product }).strict(),
   z.object({ type: z.literal("saveBusiness"), business }).strict(),
@@ -274,10 +286,40 @@ function applyCommand(current, command) {
       "This SKU is already in use."
     );
     state.products = [
-      { ...p, stock: old?.stock ?? p.stock },
+      { ...p, cost: old?.cost ?? p.cost, stock: old?.stock ?? p.stock },
       ...state.products.filter((x) => x.id !== p.id)
     ];
     log("Product saved", p.name);
+  }
+  if (command.type === "purchase") {
+    const purchase = command.purchase;
+    const p = state.products.find((x) => x.id === purchase.productId);
+    insist(
+      p && finite(purchase.quantity) && purchase.quantity > 0 && finite(purchase.unitCost) && purchase.unitCost >= 0,
+      "Enter a valid purchase quantity and unit cost."
+    );
+    insist(
+      /^\d{4}-\d{2}-\d{2}$/.test(purchase.date) && purchase.date <= today(),
+      "Choose a purchase date no later than today."
+    );
+    insist(
+      !(state.purchases || []).some((x) => x.id === purchase.id),
+      "This purchase has already been recorded."
+    );
+    const newStock = round(p.stock + purchase.quantity);
+    insist(
+      newStock > p.stock && Number.isSafeInteger(Math.round(newStock * purchase.unitCost * 100)),
+      "Purchase exceeds supported quantity or value."
+    );
+    p.cost = Math.round(
+      (p.stock * p.cost + purchase.quantity * purchase.unitCost) / newStock * 1e6
+    ) / 1e6;
+    p.stock = newStock;
+    state.purchases = [structuredClone(purchase), ...state.purchases || []];
+    log(
+      "Purchase received",
+      `${p.name}: +${purchase.quantity} at ${money(purchase.unitCost)} \xB7 ${purchase.reference}`
+    );
   }
   if (command.type === "stock") {
     const p = state.products.find((x) => x.id === command.id);
@@ -314,6 +356,9 @@ function applyCommand(current, command) {
     );
     i.business = structuredClone(state.business);
     i.paid = 0;
+    i.items.forEach((item2) => {
+      delete item2.costTotal;
+    });
     if (command.issue) {
       insist(
         validGstin(i.business.gstin) && i.business.gstin.slice(0, 2) === i.business.state && i.business.address.trim(),
@@ -333,6 +378,10 @@ function applyCommand(current, command) {
         insist(p && p.stock >= qty, `Insufficient stock for ${p?.name || "a removed product"}.`);
         p.stock = round(p.stock - qty);
       }
+      i.items.forEach((item2) => {
+        const p = state.products.find((x) => x.id === item2.productId);
+        item2.costTotal = round(item2.qty * p.cost);
+      });
       const financialYear = fy(i.date), next = (state.counters[financialYear] || 0) + 1;
       insist(next <= 99999, "Invoice sequence limit reached for this financial year.");
       i.number = `${i.business.prefix}/${financialYear}/${String(next).padStart(4, "0")}`;
@@ -380,7 +429,13 @@ function applyCommand(current, command) {
     i.status = "void";
     i.items.forEach((item2) => {
       const p = state.products.find((x) => x.id === item2.productId);
-      if (p) p.stock = round(p.stock + item2.qty);
+      if (p) {
+        const restored = round(p.stock + item2.qty);
+        p.cost = Math.round(
+          (p.stock * p.cost + (item2.costTotal ?? item2.qty * p.cost)) / restored * 1e6
+        ) / 1e6;
+        p.stock = restored;
+      }
     });
     log("Invoice voided", `${i.number} \xB7 stock restored`);
   }
@@ -458,7 +513,12 @@ async function executeServerCommand(database, ownerId, requestId, command) {
       const previous = await tx.get(root.collection("customers").doc(command.customer.id));
       if (previous.exists) state.customers = [previous.data()];
     }
-    const productIds = command.type === "saveInvoice" ? command.invoice.items.map((i) => i.productId) : command.type === "void" ? state.invoices[0]?.items.map((i) => i.productId) || [] : command.type === "stock" ? [command.id] : command.type === "saveProduct" ? [command.product.id] : [];
+    if (command.type === "purchase") {
+      const previous = await tx.get(root.collection("purchases").doc(command.purchase.id));
+      if (previous.exists)
+        state.purchases = [previous.data()];
+    }
+    const productIds = command.type === "saveInvoice" ? command.invoice.items.map((i) => i.productId) : command.type === "void" ? state.invoices[0]?.items.map((i) => i.productId) || [] : command.type === "purchase" ? [command.purchase.productId] : command.type === "stock" ? [command.id] : command.type === "saveProduct" ? [command.product.id] : [];
     for (const id2 of new Set(productIds)) {
       const product2 = await tx.get(root.collection("products").doc(id2));
       if (product2.exists) state.products.push(product2.data());
@@ -477,9 +537,16 @@ async function executeServerCommand(database, ownerId, requestId, command) {
     } catch (error) {
       throw new CommandError(error.message);
     }
-    for (const name of ["customers", "products", "invoices", "payments", "audit"]) {
-      for (const record of next[name]) {
-        const old = state[name].find((x) => x.id === record.id);
+    for (const name of [
+      "customers",
+      "products",
+      "invoices",
+      "payments",
+      "audit",
+      "purchases"
+    ]) {
+      for (const record of next[name] || []) {
+        const old = (state[name] || []).find((x) => x.id === record.id);
         if (JSON.stringify(record) !== JSON.stringify(old))
           tx.set(root.collection(name).doc(record.id), record);
       }

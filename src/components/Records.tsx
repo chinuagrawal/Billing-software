@@ -451,6 +451,7 @@ export function Inventory({
                 <th>Category</th>
                 <th>HSN / GST</th>
                 <th>Selling price</th>
+                <th>Average stock cost</th>
                 <th>Available stock</th>
                 <th>Status</th>
                 <th>Actions</th>
@@ -476,6 +477,10 @@ export function Inventory({
                   <td className="amount">
                     {money(p.price)}
                     <small>excl. GST</small>
+                  </td>
+                  <td className="amount">
+                    {money(p.cost)}
+                    <small>per {p.unit}</small>
                   </td>
                   <td>
                     <strong>{p.stock}</strong> <span className="muted">{p.unit}</span>
