@@ -110,13 +110,27 @@ var requestSchema = z.object({ requestId: id, command: commandSchema }).strict()
 
 // server/http/command.ts
 var MAX_BODY = 2e5;
+var ServerConfigurationError = class extends Error {
+};
 function services() {
   const projectId = process.env.FIREBASE_PROJECT_ID;
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
   const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n");
-  if (!projectId || !clientEmail || !privateKey) throw new Error("SERVER_NOT_CONFIGURED");
+  const missing = [
+    ["FIREBASE_PROJECT_ID", projectId],
+    ["FIREBASE_CLIENT_EMAIL", clientEmail],
+    ["FIREBASE_PRIVATE_KEY", privateKey]
+  ].filter(([, value]) => !value).map(([name]) => name);
+  if (missing.length)
+    throw new ServerConfigurationError(
+      `Missing Vercel Production variables: ${missing.join(", ")}. Add them and redeploy.`
+    );
+  if (!projectId || !clientEmail || !privateKey)
+    throw new ServerConfigurationError("Firebase server configuration is incomplete.");
   if (process.env.VITE_FIREBASE_PROJECT_ID && projectId !== process.env.VITE_FIREBASE_PROJECT_ID)
-    throw new Error("SERVER_NOT_CONFIGURED");
+    throw new ServerConfigurationError(
+      "FIREBASE_PROJECT_ID and VITE_FIREBASE_PROJECT_ID must identify the same Firebase project. Update Vercel and redeploy."
+    );
   const app = getApps().find((a) => a.name === "billing-server") || initializeApp({ credential: cert({ projectId, clientEmail, privateKey }) }, "billing-server");
   return { auth: getAuth(app), database: getFirestore(app) };
 }
@@ -173,8 +187,10 @@ async function handler(req, res) {
   let service;
   try {
     service = services();
-  } catch {
-    reply(503, { error: "The account service is not configured. Contact your administrator." });
+  } catch (error) {
+    reply(503, {
+      error: error instanceof ServerConfigurationError ? error.message : "Firebase server credentials are invalid. Check the service-account settings in Vercel Production and redeploy."
+    });
     return;
   }
   let uid;

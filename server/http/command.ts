@@ -6,13 +6,28 @@ import { requestSchema } from '../schema.js';
 import { CommandError, executeServerCommand } from '../commands.js';
 
 const MAX_BODY = 200_000;
+export class ServerConfigurationError extends Error {}
 export function services() {
   const projectId = process.env.FIREBASE_PROJECT_ID;
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
   const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
-  if (!projectId || !clientEmail || !privateKey) throw new Error('SERVER_NOT_CONFIGURED');
+  const missing = [
+    ['FIREBASE_PROJECT_ID', projectId],
+    ['FIREBASE_CLIENT_EMAIL', clientEmail],
+    ['FIREBASE_PRIVATE_KEY', privateKey],
+  ]
+    .filter(([, value]) => !value)
+    .map(([name]) => name);
+  if (missing.length)
+    throw new ServerConfigurationError(
+      `Missing Vercel Production variables: ${missing.join(', ')}. Add them and redeploy.`,
+    );
+  if (!projectId || !clientEmail || !privateKey)
+    throw new ServerConfigurationError('Firebase server configuration is incomplete.');
   if (process.env.VITE_FIREBASE_PROJECT_ID && projectId !== process.env.VITE_FIREBASE_PROJECT_ID)
-    throw new Error('SERVER_NOT_CONFIGURED');
+    throw new ServerConfigurationError(
+      'FIREBASE_PROJECT_ID and VITE_FIREBASE_PROJECT_ID must identify the same Firebase project. Update Vercel and redeploy.',
+    );
   const app =
     getApps().find((a) => a.name === 'billing-server') ||
     initializeApp({ credential: cert({ projectId, clientEmail, privateKey }) }, 'billing-server');
@@ -58,10 +73,12 @@ export default async function handler(
   let service: ReturnType<typeof services>;
   try {
     service = services();
-  } catch {
+  } catch (error) {
     reply(503, {
       error:
-        'The cloud write service is not configured. Add the Firebase server credentials to your deployment.',
+        error instanceof ServerConfigurationError
+          ? error.message
+          : 'Firebase server credentials are invalid. Check FIREBASE_CLIENT_EMAIL and the complete FIREBASE_PRIVATE_KEY in Vercel Production, then redeploy. Never include surrounding JSON quotes.',
     });
     return;
   }

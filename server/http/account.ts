@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { z } from 'zod';
-import { services, readBody } from './command.js';
+import { services, readBody, ServerConfigurationError } from './command.js';
 import { deleteOwnerAccount } from '../account.js';
 
 const schema = z.object({ confirmation: z.literal('DELETE') }).strict();
@@ -28,8 +28,13 @@ export default async function handler(
   let service: ReturnType<typeof services>;
   try {
     service = services();
-  } catch {
-    reply(503, { error: 'The account service is not configured. Contact your administrator.' });
+  } catch (error) {
+    reply(503, {
+      error:
+        error instanceof ServerConfigurationError
+          ? error.message
+          : 'Firebase server credentials are invalid. Check the service-account settings in Vercel Production and redeploy.',
+    });
     return;
   }
   let uid: string;
