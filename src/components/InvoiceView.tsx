@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Printer, Pencil, Wallet, Ban } from 'lucide-react';
+import { Printer, Pencil, Wallet, Ban, Trash2 } from 'lucide-react';
 import type { Invoice } from '../types';
 import { balance, status } from '../lib/billing';
 import { useStore } from '../lib/store';
@@ -25,8 +25,10 @@ export function InvoiceView({
   async function voidInvoice() {
     setBusy(true);
     try {
-      await execute({ type: 'void', id: i.id });
-      onDone('Invoice voided. Stock has been restored.');
+      await execute({ type: i.status === 'draft' ? 'deleteDraft' : 'void', id: i.id });
+      onDone(
+        i.status === 'draft' ? 'Draft deleted.' : 'Invoice cancelled. Stock has been restored.',
+      );
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -39,7 +41,7 @@ export function InvoiceView({
         <Badge value={status(i)} />
         <div>
           {i.status === 'draft' && (
-            <button className="button secondary" onClick={onEdit}>
+            <button className="button secondary" disabled={busy} onClick={onEdit}>
               <Pencil size={15} />
               Edit draft
             </button>
@@ -54,34 +56,66 @@ export function InvoiceView({
             <Printer size={15} />
             Print / PDF
           </button>
+          {i.status === 'draft' && (
+            <button
+              className="button secondary danger-text"
+              disabled={busy}
+              onClick={() => {
+                setError('');
+                setConfirm(true);
+              }}
+            >
+              <Trash2 size={17} /> Delete draft
+            </button>
+          )}
           {i.status === 'issued' && !i.paid && (
             <button
-              title="Void invoice"
-              aria-label="Void invoice"
-              className="icon-button danger-text"
-              onClick={() => setConfirm(true)}
+              className="button secondary danger-text"
+              disabled={busy}
+              onClick={() => {
+                setError('');
+                setConfirm(true);
+              }}
             >
               <Ban size={17} />
+              Cancel invoice
             </button>
           )}
         </div>
       </div>
       {confirm && (
         <div className="confirm-panel no-print">
-          <strong>Void {i.number}?</strong>
+          <strong>{i.status === 'draft' ? 'Delete this draft?' : `Cancel ${i.number}?`}</strong>
           <p>
-            This keeps the invoice in your records and restores its stock. The invoice number cannot
-            be reused.
+            {i.status === 'draft'
+              ? 'This permanently removes the draft. It has not used an invoice number or changed stock. This cannot be undone.'
+              : 'This keeps the invoice in your records as Void and restores its stock. The invoice number cannot be reused.'}
           </p>
           <div>
-            <button className="button secondary" onClick={() => setConfirm(false)}>
+            <button className="button secondary" disabled={busy} onClick={() => setConfirm(false)}>
               Keep invoice
             </button>
             <button className="button danger" disabled={busy} onClick={voidInvoice}>
-              {busy ? 'Voiding…' : 'Void invoice'}
+              {busy
+                ? 'Saving…'
+                : i.status === 'draft'
+                  ? 'Delete draft permanently'
+                  : 'Confirm cancellation'}
             </button>
           </div>
         </div>
+      )}
+      {i.status === 'issued' && i.paid > 0 && (
+        <p className="form-hint no-print">
+          This invoice has recorded payments and cannot be deleted or cancelled here. A
+          credit-note/refund workflow is needed for corrections; that workflow is not yet available.
+        </p>
+      )}
+      {i.status === 'void' && (
+        <p className="form-hint no-print">
+          This invoice is cancelled (Void). It stays in your records, and its invoice number cannot
+          be reused.
+        </p>
       )}
       {error && <div className="error-banner">{error}</div>}
       <InvoiceDocument

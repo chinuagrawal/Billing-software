@@ -109,4 +109,5 @@ export type Command =
   | { type: 'saveInvoice'; invoice: Invoice; issue: boolean }
   | { type: 'payment'; payment: Payment }
   | { type: 'void'; id: string }
+  | { type: 'deleteDraft'; id: string }
   | { type: 'stock'; id: string; quantity: number; reason: string };

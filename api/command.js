@@ -109,6 +109,7 @@ var commandSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("saveInvoice"), invoice, issue: z.boolean() }).strict(),
   z.object({ type: z.literal("payment"), payment }).strict(),
   z.object({ type: z.literal("void"), id }).strict(),
+  z.object({ type: z.literal("deleteDraft"), id }).strict(),
   z.object({
     type: z.literal("stock"),
     id,
@@ -420,6 +421,19 @@ function applyCommand(current, command) {
     });
     log("Payment received", `${i.number} \xB7 ${money(p.amount)}`);
   }
+  if (command.type === "deleteDraft") {
+    const invoice2 = state.invoices.find((x) => x.id === command.id);
+    insist(
+      invoice2 && invoice2.status === "draft" && invoice2.paid === 0,
+      "Only an unpaid draft can be deleted. Issued invoices must be cancelled instead."
+    );
+    insist(
+      !state.payments.some((p) => p.invoiceId === command.id),
+      "A draft with recorded payments cannot be deleted."
+    );
+    state.invoices = state.invoices.filter((x) => x.id !== command.id);
+    log("Draft deleted", `${invoice2.id} \xB7 ${invoice2.customer.name}`);
+  }
   if (command.type === "void") {
     const i = state.invoices.find((x) => x.id === command.id);
     insist(
@@ -491,10 +505,18 @@ async function executeServerCommand(database, ownerId, requestId, command) {
     const business2 = await tx.get(root.collection("settings").doc("business"));
     if (business2.exists) state.business = business2.data();
     const currentCommand = structuredClone(command);
-    const invoiceId = command.type === "saveInvoice" ? command.invoice.id : command.type === "payment" ? command.payment.invoiceId : command.type === "void" ? command.id : null;
+    const invoiceId = command.type === "saveInvoice" ? command.invoice.id : command.type === "payment" ? command.payment.invoiceId : command.type === "void" || command.type === "deleteDraft" ? command.id : null;
     if (invoiceId) {
       const invoice2 = await tx.get(root.collection("invoices").doc(invoiceId));
       if (invoice2.exists) state.invoices = [invoice2.data()];
+    }
+    if (command.type === "deleteDraft") {
+      const linkedPayments = await tx.get(
+        root.collection("payments").where("invoiceId", "==", command.id).limit(1)
+      );
+      state.payments = linkedPayments.docs.map(
+        (doc) => doc.data()
+      );
     }
     if (currentCommand.type === "saveInvoice") {
       const customer2 = await tx.get(
@@ -553,6 +575,7 @@ async function executeServerCommand(database, ownerId, requestId, command) {
     }
     if (command.type === "saveBusiness")
       tx.set(root.collection("settings").doc("business"), next.business);
+    if (command.type === "deleteDraft") tx.delete(root.collection("invoices").doc(command.id));
     for (const [key, value] of Object.entries(next.counters))
       if (value !== state.counters[key]) tx.set(root.collection("counters").doc(key), { value });
     if (skuRef && command.type === "saveProduct") tx.set(skuRef, { productId: command.product.id });

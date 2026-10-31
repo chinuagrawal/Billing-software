@@ -37,12 +37,20 @@ export async function executeServerCommand(
         ? command.invoice.id
         : command.type === 'payment'
           ? command.payment.invoiceId
-          : command.type === 'void'
+          : command.type === 'void' || command.type === 'deleteDraft'
             ? command.id
             : null;
     if (invoiceId) {
       const invoice = await tx.get(root.collection('invoices').doc(invoiceId));
       if (invoice.exists) state.invoices = [invoice.data() as Workspace['invoices'][number]];
+    }
+    if (command.type === 'deleteDraft') {
+      const linkedPayments = await tx.get(
+        root.collection('payments').where('invoiceId', '==', command.id).limit(1),
+      );
+      state.payments = linkedPayments.docs.map(
+        (doc) => doc.data() as Workspace['payments'][number],
+      );
     }
     if (currentCommand.type === 'saveInvoice') {
       const customer = await tx.get(
@@ -117,6 +125,7 @@ export async function executeServerCommand(
     }
     if (command.type === 'saveBusiness')
       tx.set(root.collection('settings').doc('business'), next.business);
+    if (command.type === 'deleteDraft') tx.delete(root.collection('invoices').doc(command.id));
     for (const [key, value] of Object.entries(next.counters))
       if (value !== state.counters[key]) tx.set(root.collection('counters').doc(key), { value });
     if (skuRef && command.type === 'saveProduct') tx.set(skuRef, { productId: command.product.id });

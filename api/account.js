@@ -112,6 +112,7 @@ var commandSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("saveInvoice"), invoice, issue: z.boolean() }).strict(),
   z.object({ type: z.literal("payment"), payment }).strict(),
   z.object({ type: z.literal("void"), id }).strict(),
+  z.object({ type: z.literal("deleteDraft"), id }).strict(),
   z.object({
     type: z.literal("stock"),
     id,

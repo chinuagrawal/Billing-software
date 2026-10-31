@@ -367,6 +367,19 @@ export function applyCommand(current: Workspace, command: Command): Workspace {
     });
     log('Payment received', `${i.number} · ${money(p.amount)}`);
   }
+  if (command.type === 'deleteDraft') {
+    const invoice = state.invoices.find((x) => x.id === command.id);
+    insist(
+      invoice && invoice.status === 'draft' && invoice.paid === 0,
+      'Only an unpaid draft can be deleted. Issued invoices must be cancelled instead.',
+    );
+    insist(
+      !state.payments.some((p) => p.invoiceId === command.id),
+      'A draft with recorded payments cannot be deleted.',
+    );
+    state.invoices = state.invoices.filter((x) => x.id !== command.id);
+    log('Draft deleted', `${invoice.id} · ${invoice.customer.name}`);
+  }
   if (command.type === 'void') {
     const i = state.invoices.find((x) => x.id === command.id);
     insist(

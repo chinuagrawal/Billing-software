@@ -3,24 +3,44 @@ import type { Firestore } from 'firebase-admin/firestore';
 import { executeServerCommand } from './commands';
 import { defaultBusiness } from '../src/lib/seed';
 import type { Command, Product } from '../src/types';
+import { demoWorkspace } from '../src/lib/seed';
 
 function databaseFixture() {
   const records = new Map<string, unknown>();
   const ref = (path: string): unknown => ({
     path,
-    collection: (name: string) => ({ doc: (id: string) => ref(`${path}/${name}/${id}`) }),
+    collection: (name: string) => ({
+      doc: (id: string) => ref(`${path}/${name}/${id}`),
+      where: (field: string, _operator: string, value: unknown) => ({
+        limit: () => ({ path: `${path}/${name}`, filter: { field, value } }),
+      }),
+    }),
   });
   const database = {
     collection: (name: string) => ({ doc: (id: string) => ref(`${name}/${id}`) }),
     runTransaction: async (work: (transaction: unknown) => Promise<unknown>) => {
       const staged = new Map(records);
       const transaction = {
-        get: async (reference: { path: string }) => ({
-          exists: records.has(reference.path),
-          data: () => structuredClone(records.get(reference.path)),
-        }),
+        get: async (reference: { path: string; filter?: { field: string; value: unknown } }) =>
+          reference.filter
+            ? {
+                docs: [...records.entries()]
+                  .filter(
+                    ([path, value]) =>
+                      path.startsWith(reference.path + '/') &&
+                      (value as Record<string, unknown>)[reference.filter!.field] ===
+                        reference.filter!.value,
+                  )
+                  .slice(0, 1)
+                  .map(([, value]) => ({ data: () => structuredClone(value) })),
+              }
+            : {
+                exists: records.has(reference.path),
+                data: () => structuredClone(records.get(reference.path)),
+              },
         set: (reference: { path: string }, value: unknown) =>
           staged.set(reference.path, structuredClone(value)),
+        delete: (reference: { path: string }) => staged.delete(reference.path),
         create: (reference: { path: string }, value: unknown) => {
           if (records.has(reference.path)) throw new Error('Already exists');
           staged.set(reference.path, structuredClone(value));
@@ -49,6 +69,50 @@ const product: Product = {
   color: 'sage',
 };
 describe('trusted server commands', () => {
+  it('deletes only the owner draft, audits it and safely replays the request', async () => {
+    const { database, records } = databaseFixture();
+    const draft = {
+      ...demoWorkspace().invoices[0],
+      id: 'draft1',
+      status: 'draft' as const,
+      number: 'DRAFT',
+      paid: 0,
+    };
+    records.set('workspaces/owner/invoices/draft1', draft);
+    records.set('workspaces/other/invoices/draft1', draft);
+    const command: Command = { type: 'deleteDraft', id: 'draft1' };
+    await executeServerCommand(database, 'owner', 'delete-1', command);
+    expect(records.has('workspaces/owner/invoices/draft1')).toBe(false);
+    expect(records.has('workspaces/other/invoices/draft1')).toBe(true);
+    expect([...records.keys()].filter((k) => k.includes('/audit/'))).toHaveLength(1);
+    expect(await executeServerCommand(database, 'owner', 'delete-1', command)).toEqual({
+      replayed: true,
+    });
+  });
+  it('rejects deletion of issued, void, absent, paid or payment-linked drafts without writes', async () => {
+    for (const variant of ['issued', 'void', 'missing', 'paid', 'linked']) {
+      const { database, records } = databaseFixture();
+      const draft = {
+        ...demoWorkspace().invoices[0],
+        id: 'draft1',
+        status:
+          variant === 'issued'
+            ? ('issued' as const)
+            : variant === 'void'
+              ? ('void' as const)
+              : ('draft' as const),
+        paid: variant === 'paid' ? 100 : 0,
+      };
+      if (variant !== 'missing') records.set('workspaces/owner/invoices/draft1', draft);
+      if (variant === 'linked')
+        records.set('workspaces/owner/payments/pay1', { invoiceId: 'draft1' });
+      const before = new Map(records);
+      await expect(
+        executeServerCommand(database, 'owner', 'delete-1', { type: 'deleteDraft', id: 'draft1' }),
+      ).rejects.toThrow();
+      expect(records).toEqual(before);
+    }
+  });
   it('writes only within the verified owner workspace', async () => {
     const { database, records } = databaseFixture();
     await executeServerCommand(database, 'verified-owner', 'request-1', {

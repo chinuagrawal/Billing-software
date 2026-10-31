@@ -366,3 +366,22 @@ describe('Historical purchase costing', () => {
     ).toThrow();
   });
 });
+
+describe('Draft deletion', () => {
+  it('removes only the requested draft without changing stock, counters or issued sales', () => {
+    const { state, invoice } = fixture();
+    state.invoices = [
+      invoice,
+      { ...invoice, id: 'issued', status: 'issued', number: 'AE/26-27/0001' },
+    ];
+    const next = applyCommand(state, { type: 'deleteDraft', id: invoice.id });
+    expect(next.invoices.map((i) => i.id)).toEqual(['issued']);
+    expect(next.products).toEqual(state.products);
+    expect(next.counters).toEqual(state.counters);
+    expect(next.audit[0].action).toBe('Draft deleted');
+    expect(state.invoices).toHaveLength(2);
+    expect(() => applyCommand(next, { type: 'deleteDraft', id: 'issued' })).toThrow(
+      'Only an unpaid draft',
+    );
+  });
+});
