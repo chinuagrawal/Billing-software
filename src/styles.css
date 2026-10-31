@@ -2006,6 +2006,10 @@ tbody tr:hover {
 .editor-table td:nth-child(3) input {
   width: 86px;
 }
+.editor-table .gst-inclusive-rate {
+  min-width: 105px;
+  white-space: nowrap;
+}
 .items-empty {
   padding: 30px;
   text-align: center;

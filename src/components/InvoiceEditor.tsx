@@ -169,7 +169,7 @@ export function InvoiceEditor({
       )}
       <div className="items-heading">
         <h3>Invoice items</h3>
-        <span>Prices exclude GST</span>
+        <span>Unit rates shown before discount</span>
       </div>
       <div className="add-product-row">
         <select
@@ -180,7 +180,25 @@ export function InvoiceEditor({
           <option value="">Choose a product to add…</option>
           {data.products.map((p) => (
             <option key={p.id} value={p.id}>
-              {p.name} · {money(p.price)} · {p.stock} in stock
+              {p.name} · {money(p.price)} excl. GST · {p.gst}% GST ·{' '}
+              {money(
+                totals(
+                  [
+                    {
+                      productId: p.id,
+                      name: p.name,
+                      hsn: p.hsn,
+                      unit: p.unit,
+                      qty: 1,
+                      price: p.price,
+                      gst: p.gst,
+                      discount: 0,
+                    },
+                  ],
+                  place !== data.business.state,
+                ).total,
+              )}{' '}
+              incl. GST · {p.stock} in stock
             </option>
           ))}
         </select>
@@ -195,10 +213,11 @@ export function InvoiceEditor({
             <tr>
               <th>Item / HSN</th>
               <th>Qty</th>
-              <th>Rate ₹</th>
+              <th>Rate excl. GST ₹</th>
+              <th>Rate incl. GST</th>
               <th>Disc. %</th>
               <th>GST %</th>
-              <th>Amount</th>
+              <th>Amount incl. GST</th>
               <th />
             </tr>
           </thead>
@@ -230,6 +249,15 @@ export function InvoiceEditor({
                     value={item.price}
                     onChange={(e) => update(index, 'price', Number(e.target.value))}
                   />
+                </td>
+                <td className="amount gst-inclusive-rate">
+                  <strong>
+                    {money(
+                      totals([{ ...item, qty: 1, discount: 0 }], place !== data.business.state)
+                        .total,
+                    )}
+                  </strong>
+                  <small>per {item.unit}</small>
                 </td>
                 <td>
                   <input
@@ -272,6 +300,12 @@ export function InvoiceEditor({
           <div className="items-empty">Add products above to start building your invoice.</div>
         )}
       </div>
+      {items.length > 0 && (
+        <p className="form-hint">
+          Unit rates are before discount. Each line amount includes GST after discount and line
+          rounding.
+        </p>
+      )}
       <div className="invoice-bottom">
         <div className="invoice-notes">
           <Field label="Delivery address">
