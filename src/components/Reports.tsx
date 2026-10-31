@@ -101,9 +101,9 @@ export function Reports() {
           <div>
             <h3>Gross profit · {money(knownProfit)}</h3>
             <p>
-              Sales after discounts less recorded stock cost, excluding GST. Before operating
-              expenses. {profitRows.filter((r) => !r.result).length} invoices have unavailable
-              historical cost and are excluded.
+              Sales after discounts and bill round-off less recorded stock cost, excluding GST.
+              Before operating expenses. {profitRows.filter((r) => !r.result).length} invoices have
+              unavailable historical cost and are excluded.
             </p>
           </div>
           <button
@@ -112,11 +112,12 @@ export function Reports() {
               download(
                 `gross-profit-${from}-${to}.csv`,
                 csv([
-                  ['Invoice', 'Date', 'Taxable sales', 'Stock cost', 'Gross profit'],
+                  ['Invoice', 'Date', 'Taxable sales', 'Round off', 'Stock cost', 'Gross profit'],
                   ...profitRows.map(({ invoice: i, result: r }) => [
                     i.number,
                     i.date,
                     invoiceTotals(i).taxable,
+                    invoiceTotals(i).roundOff,
                     r?.cost ?? 'Unavailable',
                     r?.profit ?? 'Unavailable',
                   ]),
@@ -133,6 +134,7 @@ export function Reports() {
               <tr>
                 <th>Invoice</th>
                 <th>Sales excl. GST</th>
+                <th>Round off</th>
                 <th>Stock cost</th>
                 <th>Gross profit</th>
               </tr>
@@ -142,6 +144,7 @@ export function Reports() {
                 <tr key={i.id}>
                   <td>{i.number}</td>
                   <td>{money(invoiceTotals(i).taxable)}</td>
+                  <td>{money(invoiceTotals(i).roundOff)}</td>
                   <td>{r ? money(r.cost) : 'Unavailable'}</td>
                   <td>{r ? money(r.profit) : 'Unavailable'}</td>
                 </tr>

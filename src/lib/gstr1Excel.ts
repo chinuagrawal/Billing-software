@@ -144,12 +144,19 @@ export function createGstr1Workbook(data: Workspace, options: Gstr1Options) {
     formula: 'SUM(B10:E10)',
     result: report.sectionTotals['Zero rate review'].total,
   };
+  const registerRows = report.sheets.find((s) => s.name === 'Sales register')!.rows;
+  summary.getCell('F11').value = {
+    formula: registerRows.length
+      ? `SUMIFS('Sales register'!O7:O${registerRows.length + 6},'Sales register'!D7:D${registerRows.length + 6},"issued")`
+      : '0',
+    result: report.roundOffTotal,
+  };
   const totalRow = summary.addRow(['All issued sales', ...Object.values(report.actual)]);
   totalRow.eachCell((cell, col) => {
     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: shade } };
     cell.font = { name: 'Arial', size: 10, bold: true };
     if (col > 1) {
-      cell.value = { formula: `SUM(${letter(col)}7:${letter(col)}10)`, result: Number(cell.value) };
+      cell.value = { formula: `SUM(${letter(col)}7:${letter(col)}11)`, result: Number(cell.value) };
       cell.numFmt = currencyFormat;
     }
   });
@@ -168,7 +175,7 @@ export function createGstr1Workbook(data: Workspace, options: Gstr1Options) {
       result: actual,
     };
     reconciliation.getCell(row, 3).value = {
-      formula: `'Summary'!${letter(2 + n)}11`,
+      formula: `'Summary'!${letter(2 + n)}12`,
       result: Number(reconciliationRows[n][2]),
     };
     reconciliation.getCell(row, 4).value = {
@@ -181,8 +188,12 @@ export function createGstr1Workbook(data: Workspace, options: Gstr1Options) {
       result: Number(reconciliationRows[n][4]),
     };
     reconciliation.getCell(row, 6).value = {
-      formula: `ROUND(B${row}-E${row},2)`,
+      formula: `ROUND(B${row}-E${row}-G${row},2)`,
       result: Number(reconciliationRows[n][5]),
+    };
+    reconciliation.getCell(row, 7).value = {
+      formula: n === 4 ? "'Summary'!F11" : '0',
+      result: Number(reconciliationRows[n][6]),
     };
   }
   reconciliation.addConditionalFormatting({

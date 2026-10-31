@@ -102,11 +102,21 @@ export function totals(items: LineItem[], interstate: boolean) {
     total: round(taxable + cgst + sgst + igst),
   };
 }
-export const invoiceTotals = (i: Invoice) => totals(i.items, i.business.state !== i.placeOfSupply);
+export function roundedInvoiceTotals(items: LineItem[], interstate: boolean) {
+  const t = totals(items, interstate);
+  const total = Math.round(t.total);
+  return { ...t, unroundedTotal: t.total, roundOff: round(total - t.total), total };
+}
+export function invoiceTotals(i: Invoice) {
+  const t = totals(i.items, i.business.state !== i.placeOfSupply);
+  const roundOff = i.roundOff ?? 0;
+  return { ...t, unroundedTotal: t.total, roundOff, total: round(t.total + roundOff) };
+}
 export function invoiceProfit(i: Invoice) {
   if (i.status !== 'issued' || i.items.some((x) => x.costTotal === undefined)) return null;
   const cost = round(i.items.reduce((sum, x) => sum + x.costTotal!, 0));
-  const sales = invoiceTotals(i).taxable;
+  const t = invoiceTotals(i);
+  const sales = round(t.taxable + t.roundOff);
   return { cost, sales, profit: round(sales - cost) };
 }
 export const balance = (i: Invoice) =>
@@ -270,6 +280,7 @@ export function applyCommand(current: Workspace, command: Command): Workspace {
     const i = structuredClone(command.invoice),
       existing = state.invoices.find((x) => x.id === i.id);
     insist(!existing || existing.status === 'draft', 'An issued invoice cannot be edited.');
+    delete i.roundOff;
     const customer = state.customers.find((c) => c.id === i.customer.id);
     insist(customer, 'Select a customer.');
     i.customer = structuredClone(customer);
@@ -298,6 +309,7 @@ export function applyCommand(current: Workspace, command: Command): Workspace {
       'Invoice value exceeds the supported currency precision.',
     );
     i.business = structuredClone(state.business);
+    i.roundOff = roundedInvoiceTotals(i.items, i.business.state !== i.placeOfSupply).roundOff;
     i.paid = 0;
     i.items.forEach((item) => {
       delete item.costTotal;

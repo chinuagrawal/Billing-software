@@ -242,9 +242,10 @@ export function buildGstr1Report(data: Workspace, options: Gstr1Options) {
       'SGST-UTGST INR',
       'IGST INR',
       'Invoice value INR',
+      'Round off INR',
     ],
     rows: [],
-    moneyColumns: [10, 11, 12, 13, 14],
+    moneyColumns: [10, 11, 12, 13, 14, 15],
     dateColumns: [3],
   };
   const sectionTotals: Record<GstrSection, Amounts> = {
@@ -286,6 +287,7 @@ export function buildGstr1Report(data: Workspace, options: Gstr1Options) {
       pos(i.placeOfSupply),
       section,
       ...values(t),
+      t.roundOff,
     ]);
     if (seen.has(i.number))
       warn(i.number, 'Duplicate invoice number', 'Resolve duplicate numbers before filing.');
@@ -542,6 +544,7 @@ export function buildGstr1Report(data: Workspace, options: Gstr1Options) {
     add(s, invoiceTotals(i));
     return s;
   }, zero());
+  const roundOffTotal = round(issued.reduce((sum, i) => sum + invoiceTotals(i).roundOff, 0));
   const summary: ReportSheet = {
     name: 'Summary',
     headers: [
@@ -552,7 +555,10 @@ export function buildGstr1Report(data: Workspace, options: Gstr1Options) {
       'IGST INR',
       'Value incl. tax INR',
     ],
-    rows: Object.entries(sectionTotals).map(([label, a]) => [label, ...values(a)]),
+    rows: [
+      ...Object.entries(sectionTotals).map(([label, a]) => [label, ...values(a)]),
+      ['Bill round-off', 0, 0, 0, 0, roundOffTotal],
+    ],
     moneyColumns: [2, 3, 4, 5, 6],
   };
   const reconciliation: ReportSheet = {
@@ -563,22 +569,27 @@ export function buildGstr1Report(data: Workspace, options: Gstr1Options) {
       'Schedules plus zero-rate review INR',
       'Difference INR',
       'HSN B2B plus B2C INR',
-      'HSN difference INR',
+      'HSN difference after round-off INR',
+      'Bill round-off INR',
     ],
     rows: amountKeys.map((key) => [
       key,
       actual[key],
-      round(Object.values(sectionTotals).reduce((s, a) => s + a[key], 0)),
+      round(
+        Object.values(sectionTotals).reduce((s, a) => s + a[key], 0) +
+          (key === 'total' ? roundOffTotal : 0),
+      ),
       0,
       round([...hsnGroups.values()].reduce((s, h) => s + h.amounts[key], 0)),
       0,
+      key === 'total' ? roundOffTotal : 0,
     ]),
-    moneyColumns: [2, 3, 4, 5, 6],
+    moneyColumns: [2, 3, 4, 5, 6, 7],
   };
   // Differences calculated independently of presentation formulas for tests and cached values.
   for (const r of reconciliation.rows) {
     r[3] = round(Number(r[1]) - Number(r[2]));
-    r[5] = round(Number(r[1]) - Number(r[4]));
+    r[5] = round(Number(r[1]) - Number(r[4]) - Number(r[6]));
   }
   const reviewSheet: ReportSheet = {
     name: 'Review',
@@ -592,6 +603,10 @@ export function buildGstr1Report(data: Workspace, options: Gstr1Options) {
       [
         'Purpose',
         'GSTR-1 preparation workbook for accountant review. This is not the GST Portal offline-import template, upload JSON, or a filed return. Transfer reviewed values into the current utility or portal.',
+      ],
+      [
+        'Bill round-off',
+        'Final invoice values include the recorded rupee-rounding adjustment. Taxable values, GST and HSN summaries retain line precision. Summary shows round-off separately; reconciliation adjusts the HSN total comparison for it.',
       ],
       [
         'Source',
@@ -655,6 +670,7 @@ export function buildGstr1Report(data: Workspace, options: Gstr1Options) {
     issued,
     actual,
     sectionTotals,
+    roundOffTotal,
     sheets: [
       summary,
       b2b,

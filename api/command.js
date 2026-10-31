@@ -66,6 +66,7 @@ var item = z.object({
   gst: z.number().min(0).max(100)
 }).strict();
 var invoice = z.object({
+  roundOff: z.number().min(-0.5).max(0.5).optional(),
   id,
   number: text,
   customer,
@@ -204,7 +205,16 @@ function totals(items, interstate) {
     total: round(taxable + cgst + sgst + igst)
   };
 }
-var invoiceTotals = (i) => totals(i.items, i.business.state !== i.placeOfSupply);
+function roundedInvoiceTotals(items, interstate) {
+  const t = totals(items, interstate);
+  const total = Math.round(t.total);
+  return { ...t, unroundedTotal: t.total, roundOff: round(total - t.total), total };
+}
+function invoiceTotals(i) {
+  const t = totals(i.items, i.business.state !== i.placeOfSupply);
+  const roundOff = i.roundOff ?? 0;
+  return { ...t, unroundedTotal: t.total, roundOff, total: round(t.total + roundOff) };
+}
 var balance = (i) => i.status === "issued" ? round(invoiceTotals(i).total - i.paid) : 0;
 function validGstin(gstin) {
   if (!/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/.test(gstin) || !STATES[gstin.slice(0, 2)])
@@ -337,6 +347,7 @@ function applyCommand(current, command) {
   if (command.type === "saveInvoice") {
     const i = structuredClone(command.invoice), existing = state.invoices.find((x) => x.id === i.id);
     insist(!existing || existing.status === "draft", "An issued invoice cannot be edited.");
+    delete i.roundOff;
     const customer2 = state.customers.find((c) => c.id === i.customer.id);
     insist(customer2, "Select a customer.");
     i.customer = structuredClone(customer2);
@@ -356,6 +367,7 @@ function applyCommand(current, command) {
       "Invoice value exceeds the supported currency precision."
     );
     i.business = structuredClone(state.business);
+    i.roundOff = roundedInvoiceTotals(i.items, i.business.state !== i.placeOfSupply).roundOff;
     i.paid = 0;
     i.items.forEach((item2) => {
       delete item2.costTotal;

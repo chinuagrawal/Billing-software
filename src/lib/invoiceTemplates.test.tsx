@@ -62,3 +62,17 @@ describe('invoice styles and amount words', () => {
     }
   });
 });
+
+it('shows saved round-off and rounded amount words in every invoice style', () => {
+  const invoice = demoWorkspace().invoices[0];
+  invoice.items = [{ ...invoice.items[0], qty: 1, price: 100.42, gst: 0, discount: 0 }];
+  invoice.roundOff = -0.42;
+  invoice.paid = 0;
+  for (const template of INVOICE_TEMPLATES) {
+    const html = renderToStaticMarkup(<InvoiceDocument invoice={invoice} template={template.id} />);
+    expect(html).toContain('Round off');
+    expect(html).toContain(money(-0.42));
+    expect(html).toContain('One Hundred Rupees Only');
+    expect(html).toContain(money(100));
+  }
+});

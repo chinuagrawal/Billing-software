@@ -79,7 +79,7 @@ function LineItems({ invoice: i, classic }: { invoice: Invoice; classic: boolean
             <strong>{money(sum.tax)}</strong>
           </td>
           <td className="bill-number">
-            <strong>{money(sum.total)}</strong>
+            <strong>{money(sum.unroundedTotal)}</strong>
           </td>
         </tr>
       </tbody>
@@ -193,6 +193,15 @@ function AmountSummary({ invoice: i }: { invoice: Invoice }) {
             <dd>{money(sum.cgst)}</dd>
             <dt>{['04', '26', '31', '35', '38'].includes(i.placeOfSupply) ? 'UTGST' : 'SGST'}</dt>
             <dd>{money(sum.sgst)}</dd>
+          </>
+        )}
+        {i.roundOff !== undefined && (
+          <>
+            <dt>Round off</dt>
+            <dd>
+              {sum.roundOff > 0 ? '+' : ''}
+              {money(sum.roundOff)}
+            </dd>
           </>
         )}
         <dt className="bill-grand">Invoice total</dt>

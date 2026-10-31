@@ -224,8 +224,8 @@ describe('GSTR-1 preparation schedules', () => {
       xSplit: 1,
       showGridLines: false,
     });
-    expect(loaded.getWorksheet('Summary')!.getCell('B11').value).toEqual({
-      formula: 'SUM(B7:B10)',
+    expect(loaded.getWorksheet('Summary')!.getCell('B12').value).toEqual({
+      formula: 'SUM(B7:B11)',
       result: 100,
     });
     expect(loaded.getWorksheet('Reconciliation')!.getCell('D7').formula).toBe('ROUND(B7-C7,2)');
@@ -234,4 +234,23 @@ describe('GSTR-1 preparation schedules', () => {
     expect(xml).toMatch(/<c r="D7"[^>]*><f>ROUND\(B7-C7,2\)<\/f><v>0<\/v><\/c>/);
     expect(saved.byteLength).toBeGreaterThan(10000);
   });
+});
+
+it('reconciles rounded invoice values without changing HSN or taxable amounts', () => {
+  const i = invoice();
+  i.items[0].price = 100.42;
+  i.items[0].gst = 0;
+  i.roundOff = -0.42;
+  const report = buildGstr1Report(state([i]), options);
+  expect(report.actual.taxable).toBe(100.42);
+  expect(report.actual.total).toBe(100);
+  expect(report.roundOffTotal).toBe(-0.42);
+  expect(tab(report, 'Sales register').rows[0][13]).toBe(100);
+  expect(tab(report, 'Sales register').rows[0][14]).toBe(-0.42);
+  expect(tab(report, 'HSN B2C').rows[0][6]).toBe(100.42);
+  expect(tab(report, 'Reconciliation').rows.every((r) => r[3] === 0 && r[5] === 0)).toBe(true);
+  const wb = createGstr1Workbook(state([i]), options);
+  expect(wb.getWorksheet('Summary')!.getCell('F11').result).toBe(-0.42);
+  expect(wb.getWorksheet('Summary')!.getCell('F12').result).toBe(100);
+  expect(wb.getWorksheet('Reconciliation')!.getCell('G11').result).toBe(-0.42);
 });

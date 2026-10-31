@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Plus, Trash2, FileCheck2, Save, Info } from 'lucide-react';
 import type { Invoice, LineItem } from '../types';
 import { useStore } from '../lib/store';
-import { dateLabel, money, totals, today, uid } from '../lib/billing';
+import { dateLabel, money, totals, today, uid, roundedInvoiceTotals } from '../lib/billing';
 import { Field, StateSelect } from './ui';
 
 export function InvoiceEditor({
@@ -29,7 +29,7 @@ export function InvoiceEditor({
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false);
   const customer = data.customers.find((c) => c.id === customerId),
-    sum = totals(items, place !== data.business.state);
+    sum = roundedInvoiceTotals(items, place !== data.business.state);
   const update = (index: number, key: keyof LineItem, value: string | number) =>
     setItems(items.map((item, n) => (n === index ? { ...item, [key]: value } : item)));
   const add = () => {
@@ -359,6 +359,13 @@ export function InvoiceEditor({
               </div>
             </>
           )}
+          <div>
+            <span>Round off</span>
+            <strong>
+              {sum.roundOff > 0 ? '+' : ''}
+              {money(sum.roundOff)}
+            </strong>
+          </div>
           <div className="grand-total">
             <span>Total amount</span>
             <strong>{money(sum.total)}</strong>

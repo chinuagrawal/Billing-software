@@ -60,6 +60,7 @@ export interface LineItem {
   gst: number;
 }
 export interface Invoice {
+  roundOff?: number;
   id: string;
   number: string;
   customer: Customer;

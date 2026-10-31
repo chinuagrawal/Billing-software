@@ -7,6 +7,7 @@ import {
   validGstin,
   balance,
   invoiceTotals,
+  roundedInvoiceTotals,
   status,
   csv,
   today,
@@ -383,5 +384,66 @@ describe('Draft deletion', () => {
     expect(() => applyCommand(next, { type: 'deleteDraft', id: 'issued' })).toThrow(
       'Only an unpaid draft',
     );
+  });
+});
+
+describe('Invoice rupee round-off', () => {
+  it('rounds down, up and exact halves while leaving line taxes intact', () => {
+    for (const [price, expected, adjustment] of [
+      [100.49, 100, -0.49],
+      [100.5, 101, 0.5],
+      [100.99, 101, 0.01],
+      [100, 100, 0],
+      [0.49, 0, -0.49],
+      [0.5, 1, 0.5],
+    ]) {
+      const item = { ...line, qty: 1, price, gst: 0, discount: 0 };
+      const t = roundedInvoiceTotals([item], false);
+      expect(t.total).toBe(expected);
+      expect(t.roundOff).toBe(adjustment);
+      expect(t.taxable).toBe(price);
+      expect(t.tax).toBe(0);
+    }
+    const item = { ...line, qty: 3, price: 99.99, gst: 18, discount: 3 };
+    for (const interstate of [false, true]) {
+      const raw = totals([item], interstate),
+        rounded = roundedInvoiceTotals([item], interstate);
+      expect(rounded.taxable).toBe(raw.taxable);
+      expect(rounded.cgst).toBe(raw.cgst);
+      expect(rounded.sgst).toBe(raw.sgst);
+      expect(rounded.igst).toBe(raw.igst);
+      expect(rounded.total).toBe(Math.round(raw.total));
+    }
+  });
+  it('computes the saved adjustment on the server and uses it for payment limits and balance', () => {
+    const { state, invoice } = fixture();
+    invoice.items = [{ ...line, qty: 1, price: 100.42, gst: 0, discount: 0 }];
+    invoice.roundOff = 0.5;
+    const next = applyCommand(state, { type: 'saveInvoice', invoice, issue: true });
+    const issued = next.invoices[0];
+    expect(issued.roundOff).toBe(-0.42);
+    expect(invoiceTotals(issued).total).toBe(100);
+    expect(balance(issued)).toBe(100);
+    const payment = {
+      id: 'pay-round',
+      invoiceId: issued.id,
+      invoiceNumber: '',
+      customerName: '',
+      amount: 100.01,
+      date: today(),
+      method: 'Cash',
+      reference: '',
+    };
+    expect(() => applyCommand(next, { type: 'payment', payment })).toThrow('cannot exceed');
+    const paid = applyCommand(next, { type: 'payment', payment: { ...payment, amount: 100 } });
+    expect(balance(paid.invoices[0])).toBe(0);
+    expect(invoiceProfit(issued)?.sales).toBe(100);
+  });
+  it('preserves legacy issued totals without a saved adjustment', () => {
+    const { invoice } = fixture();
+    invoice.items = [{ ...line, qty: 1, price: 100.42, gst: 0, discount: 0 }];
+    invoice.status = 'issued';
+    expect(invoiceTotals(invoice).total).toBe(100.42);
+    expect(invoiceTotals(invoice).roundOff).toBe(0);
   });
 });

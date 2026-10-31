@@ -71,6 +71,7 @@ const item = z
   .strict();
 const invoice = z
   .object({
+    roundOff: z.number().min(-0.5).max(0.5).optional(),
     id,
     number: text,
     customer,

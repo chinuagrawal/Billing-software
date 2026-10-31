@@ -69,6 +69,7 @@ var item = z.object({
   gst: z.number().min(0).max(100)
 }).strict();
 var invoice = z.object({
+  roundOff: z.number().min(-0.5).max(0.5).optional(),
   id,
   number: text,
   customer,
