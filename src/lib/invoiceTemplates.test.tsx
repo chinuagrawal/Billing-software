@@ -76,3 +76,16 @@ it('shows saved round-off and rounded amount words in every invoice style', () =
     expect(html).toContain(money(100));
   }
 });
+
+it('omits private payment tracking from every customer invoice style', () => {
+  const invoice = demoWorkspace().invoices[0];
+  invoice.paid = 321.09;
+  for (const template of INVOICE_TEMPLATES) {
+    const html = renderToStaticMarkup(<InvoiceDocument invoice={invoice} template={template.id} />);
+    expect(html).not.toContain('Received');
+    expect(html).not.toContain('Balance due');
+    expect(html).not.toContain(money(invoice.paid));
+    expect(html).toContain('Invoice total');
+    expect(html).toContain(money(invoiceTotals(invoice).total));
+  }
+});

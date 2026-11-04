@@ -27,6 +27,8 @@ describe('Shared print layout PDFs', () => {
       expect(html).toContain(i.customer.name);
       expect(html).toContain('bill-seller');
       expect(html).toContain('Round off');
+      expect(html).not.toContain('Received');
+      expect(html).not.toContain('Balance due');
       expect(html).toContain(money(invoiceTotals(i).total));
     }
     expect(invoicePrintCss).toContain('@media all');

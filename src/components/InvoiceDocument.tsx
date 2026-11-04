@@ -1,6 +1,6 @@
 import { Fragment } from 'react';
 import type { Invoice, InvoiceTemplate } from '../types';
-import { balance, dateLabel, invoiceTotals, money, STATES, totals } from '../lib/billing';
+import { dateLabel, invoiceTotals, money, STATES, totals } from '../lib/billing';
 import { amountInWords, taxSummary } from '../lib/invoiceTemplates';
 
 function LineItems({ invoice: i, classic }: { invoice: Invoice; classic: boolean }) {
@@ -211,12 +211,6 @@ function AmountSummary({ invoice: i }: { invoice: Invoice }) {
         <h4>Invoice amount in words</h4>
         <p>{amountInWords(sum.total)}</p>
       </div>
-      <dl>
-        <dt>Received</dt>
-        <dd>{money(i.paid)}</dd>
-        <dt>Balance due</dt>
-        <dd>{money(balance(i))}</dd>
-      </dl>
     </section>
   );
 }

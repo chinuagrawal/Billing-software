@@ -35,3 +35,14 @@ describe('Invoice actions', () => {
     expect(html).not.toContain('Delete draft');
   });
 });
+
+it('keeps the owner payment summary outside the printable invoice', () => {
+  const html = render('issued', 321.09);
+  expect(html).toContain('invoice-payment-summary no-print');
+  expect(html).toContain('Only in your workspace');
+  expect(html).toContain('Amount received');
+  expect(html).toContain('Balance due');
+  const article = html.slice(html.indexOf('<article'), html.indexOf('</article>'));
+  expect(article).not.toContain('Amount received');
+  expect(article).not.toContain('Balance due');
+});

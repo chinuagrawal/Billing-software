@@ -3344,3 +3344,16 @@ tbody tr:hover {
 .invoice-file-buttons { display:flex; gap:8px; flex-wrap:wrap; }
 .invoice-file-actions small { color:var(--muted,#687764); font-size:11px; max-width:100%; overflow-wrap:anywhere; text-align:right; }
 @media(max-width:700px) { .invoice-file-actions { align-items:stretch; margin:0 16px 16px; } .invoice-file-actions small { text-align:left; } }
+
+
+.invoice-payment-summary {
+  margin: 0 24px 16px;
+  padding: 12px 16px;
+  background: #f3f6ee;
+  border: 1px solid #e1e7da;
+  border-radius: 8px;
+}
+.invoice-payment-summary > small { display: block; color: #687764; margin-bottom: 8px; }
+.invoice-payment-summary > div { display: flex; flex-wrap: wrap; gap: 14px 32px; }
+.invoice-payment-summary span { display: flex; align-items: center; gap: 10px; font-size: 12px; }
+@media (max-width:700px) { .invoice-payment-summary { margin: 0 16px 16px; } }

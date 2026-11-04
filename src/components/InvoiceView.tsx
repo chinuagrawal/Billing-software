@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Printer, Pencil, Wallet, Ban, Trash2 } from 'lucide-react';
 import type { Invoice } from '../types';
-import { balance, status } from '../lib/billing';
+import { balance, status, money } from '../lib/billing';
 import { useStore } from '../lib/store';
 import { Badge } from './ui';
 import { InvoiceDocument } from './InvoiceDocument';
@@ -97,6 +97,17 @@ export function InvoiceView({
       <div className="no-print">
         <InvoiceFileActions invoice={i} template={template} sample={mode === 'demo'} />
       </div>
+      <section className="invoice-payment-summary no-print" aria-label="Private payment summary">
+        <small>Payment tracking · Only in your workspace</small>
+        <div>
+          <span>
+            Amount received <strong>{money(i.paid)}</strong>
+          </span>
+          <span>
+            Balance due <strong>{money(balance(i))}</strong>
+          </span>
+        </div>
+      </section>
       {confirm && (
         <div className="confirm-panel no-print">
           <strong>{i.status === 'draft' ? 'Delete this draft?' : `Cancel ${i.number}?`}</strong>
