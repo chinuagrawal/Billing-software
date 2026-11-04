@@ -3,6 +3,7 @@ import type { Customer, Product, Invoice } from '../types';
 import { useStore } from '../lib/store';
 import { uid, today, money, balance } from '../lib/billing';
 import { Field, StateSelect } from './ui';
+import { InclusiveRateInput } from './InclusiveRateInput';
 
 export function CustomerForm({
   initial,
@@ -192,6 +193,17 @@ export function ProductForm({
             min="0"
             value={p.price}
             onChange={(e) => set('price', Number(e.target.value))}
+          />
+        </Field>
+        <Field
+          label="Selling price (incl. GST) ₹"
+          hint="Edit either price to update the other. Local GST preview; invoice totals follow the customer's place of supply."
+        >
+          <InclusiveRateInput
+            item={p}
+            interstate={false}
+            required
+            onPrice={(price) => set('price', price)}
           />
         </Field>
         <Field

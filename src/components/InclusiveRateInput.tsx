@@ -6,10 +6,14 @@ export function InclusiveRateInput({
   item,
   interstate,
   onPrice,
+  id,
+  required = false,
 }: {
-  item: LineItem;
+  item: Pick<LineItem, 'name' | 'price' | 'gst' | 'unit'>;
   interstate: boolean;
   onPrice: (price: number) => void;
+  id?: string;
+  required?: boolean;
 }) {
   const [draft, setDraft] = useState<string | null>(null);
   const actual = inclusiveUnitRate(item.price, item.gst, interstate);
@@ -19,7 +23,9 @@ export function InclusiveRateInput({
   return (
     <>
       <input
-        aria-label={`Price including GST for ${item.name}`}
+        id={id}
+        required={required}
+        aria-label={`Price including GST for ${item.name || 'product'}`}
         type="number"
         min="0"
         max="1000000000000"
