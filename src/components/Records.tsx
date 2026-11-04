@@ -8,6 +8,7 @@ import {
   Package,
   Users,
   Wallet,
+  Share2,
 } from 'lucide-react';
 import { useStore } from '../lib/store';
 import { balance, csv, dateLabel, download, invoiceTotals, money, status } from '../lib/billing';
@@ -186,13 +187,24 @@ export function Invoices({
                     <Badge value={status(i)} />
                   </td>
                   <td>
-                    <button
-                      className="icon-button"
-                      aria-label={`Open ${i.number}`}
-                      onClick={() => onView(i)}
-                    >
-                      <ArrowUpRight size={17} />
-                    </button>
+                    <div className="row-actions">
+                      <button
+                        className="button secondary"
+                        aria-label={`Share invoice ${i.number}`}
+                        title="Open invoice sharing options"
+                        onClick={() => onView(i)}
+                      >
+                        <Share2 size={15} />
+                        Share
+                      </button>
+                      <button
+                        className="icon-button"
+                        aria-label={`Open ${i.number}`}
+                        onClick={() => onView(i)}
+                      >
+                        <ArrowUpRight size={17} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

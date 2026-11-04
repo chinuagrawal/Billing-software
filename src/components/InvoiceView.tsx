@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Printer, Pencil, Wallet, Ban, Trash2 } from 'lucide-react';
 import type { Invoice } from '../types';
 import { balance, status } from '../lib/billing';
@@ -6,6 +6,8 @@ import { useStore } from '../lib/store';
 import { Badge } from './ui';
 import { InvoiceDocument } from './InvoiceDocument';
 import { resolveTemplate } from '../lib/invoiceTemplates';
+import { InvoiceFileActions } from './InvoiceFileActions';
+import { invoiceFilename } from '../lib/invoiceFiles';
 export function InvoiceView({
   invoice,
   onEdit,
@@ -22,6 +24,15 @@ export function InvoiceView({
     [busy, setBusy] = useState(false),
     [error, setError] = useState('');
   const i = invoice;
+  const template = resolveTemplate(data.business.invoiceTemplate || i.business.invoiceTemplate);
+  const filename = invoiceFilename(i, mode === 'demo');
+  useEffect(() => {
+    const previous = document.title;
+    document.title = filename.replace(/\.pdf$/i, '');
+    return () => {
+      document.title = previous;
+    };
+  }, [filename]);
   async function voidInvoice() {
     setBusy(true);
     try {
@@ -83,6 +94,9 @@ export function InvoiceView({
           )}
         </div>
       </div>
+      <div className="no-print">
+        <InvoiceFileActions invoice={i} template={template} sample={mode === 'demo'} />
+      </div>
       {confirm && (
         <div className="confirm-panel no-print">
           <strong>{i.status === 'draft' ? 'Delete this draft?' : `Cancel ${i.number}?`}</strong>
@@ -118,11 +132,7 @@ export function InvoiceView({
         </p>
       )}
       {error && <div className="error-banner">{error}</div>}
-      <InvoiceDocument
-        invoice={i}
-        template={resolveTemplate(data.business.invoiceTemplate || i.business.invoiceTemplate)}
-        sample={mode === 'demo'}
-      />
+      <InvoiceDocument invoice={i} template={template} sample={mode === 'demo'} />
     </>
   );
 }

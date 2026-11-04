@@ -193,3 +193,7 @@ New and re-saved draft invoices calculate the final payable amount to the neares
 
 
 The invoice editor supports editing either the excluding-GST or including-GST unit rate. Inclusive entries update the excluding-GST rate at paise precision using the actual local/interstate tax split. Where an exact inclusive amount cannot be represented with paise prices, the closest rate is selected and a rounding note is shown while editing. Discounts apply after the unit rate; invoice round-off remains separate. Product master prices are not changed by invoice edits.
+
+
+### Save and share invoice PDFs
+Each invoice has Save PDF and Share PDF controls, and the invoice list has Share shortcuts that open the bill's sharing options. PDFs are prepared locally in the browser using the selected Classic, Modern or Minimal style, with repeated table headers for longer invoices. Filenames are assigned from invoice number, customer name and invoice date, with safe filename characters; draft and cancelled files are labelled, and demo files have a DEMO prefix and sample labels. Download and native sharing use the same prepared file. Where file sharing is supported, the device share menu lets the user choose a recipient/app. Otherwise the file downloads for manual attachment. Cancelling the share menu does not download or send the file. No public invoice URL, server upload or automatic message sending is used. The browser print title also uses the invoice filename; Save PDF is the reliable automatically named download.
