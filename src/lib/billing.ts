@@ -71,7 +71,10 @@ export const fy = (date: string) => {
   const start = month >= 4 ? year : year - 1;
   return `${String(start).slice(2)}-${String(start + 1).slice(2)}`;
 };
-export function totals(items: LineItem[], interstate: boolean) {
+export function totals(
+  items: Pick<LineItem, 'qty' | 'price' | 'discount' | 'gst'>[],
+  interstate: boolean,
+) {
   let subtotal = 0,
     discount = 0,
     taxable = 0,
@@ -101,6 +104,41 @@ export function totals(items: LineItem[], interstate: boolean) {
     tax: round(cgst + sgst + igst),
     total: round(taxable + cgst + sgst + igst),
   };
+}
+export function inclusiveUnitRate(price: number, gst: number, interstate: boolean) {
+  return totals([{ qty: 1, price, discount: 0, gst }], interstate).total;
+}
+export function exclusiveUnitRate(inclusive: number, gst: number, interstate: boolean) {
+  if (
+    !Number.isFinite(inclusive) ||
+    inclusive < 0 ||
+    inclusive > 1e12 ||
+    !Number.isFinite(gst) ||
+    gst < 0 ||
+    gst > 100
+  )
+    throw new Error('Enter a valid unit price and GST percentage.');
+  const target = round(inclusive),
+    estimate = target / (1 + gst / 100);
+  const cents = Math.round(estimate * 100);
+  let best = cents / 100,
+    error = Infinity,
+    distance = Infinity;
+  // Split CGST/SGST rounding can make the straightforward division one paise off.
+  // Choose the closest representable paise price using the actual invoice calculation.
+  for (let candidate = Math.max(0, cents - 3); candidate <= cents + 3; candidate++) {
+    const price = candidate / 100;
+    const difference = Math.abs(
+      Math.round(inclusiveUnitRate(price, gst, interstate) * 100) - Math.round(target * 100),
+    );
+    const proximity = Math.abs(price - estimate);
+    if (difference < error || (difference === error && proximity < distance)) {
+      best = price;
+      error = difference;
+      distance = proximity;
+    }
+  }
+  return best;
 }
 export function roundedInvoiceTotals(items: LineItem[], interstate: boolean) {
   const t = totals(items, interstate);

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   applyCommand,
+  round,
   invoiceProfit,
   totals,
   fy,
@@ -8,6 +9,8 @@ import {
   balance,
   invoiceTotals,
   roundedInvoiceTotals,
+  inclusiveUnitRate,
+  exclusiveUnitRate,
   status,
   csv,
   today,
@@ -445,5 +448,42 @@ describe('Invoice rupee round-off', () => {
     invoice.status = 'issued';
     expect(invoiceTotals(invoice).total).toBe(100.42);
     expect(invoiceTotals(invoice).roundOff).toBe(0);
+  });
+});
+
+describe('Editable GST-inclusive unit rates', () => {
+  it('converts inclusive prices back to a paise unit rate for local and interstate GST', () => {
+    for (const interstate of [false, true]) {
+      expect(exclusiveUnitRate(118, 18, interstate)).toBe(100);
+      expect(inclusiveUnitRate(exclusiveUnitRate(118, 18, interstate), 18, interstate)).toBe(118);
+      expect(exclusiveUnitRate(100.49, 0, interstate)).toBe(100.49);
+      expect(exclusiveUnitRate(0, 18, interstate)).toBe(0);
+    }
+    expect(exclusiveUnitRate(99.99, 18, false)).toBe(84.73);
+    expect(inclusiveUnitRate(84.73, 18, false)).toBe(99.99);
+  });
+  it('chooses the nearest actual tax-rounded amount when an exact paise price is impossible', () => {
+    const price = exclusiveUnitRate(0.06, 18, false);
+    expect(price).toBe(0.05);
+    expect(inclusiveUnitRate(price, 18, false)).toBe(0.05);
+    for (const interstate of [false, true])
+      for (const gst of [0, 5, 12, 18, 28, 40, 100])
+        for (let cents = 0; cents < 200; cents++) {
+          const target = cents / 100,
+            chosen = exclusiveUnitRate(target, gst, interstate);
+          const difference = Math.abs(round(inclusiveUnitRate(chosen, gst, interstate) - target));
+          expect(difference).toBeLessThanOrEqual(0.01);
+        }
+  });
+  it('rejects invalid prices and GST values', () => {
+    for (const [price, gst] of [
+      [-1, 18],
+      [Infinity, 18],
+      [100, NaN],
+      [100, -1],
+      [100, 101],
+      [1e13, 18],
+    ])
+      expect(() => exclusiveUnitRate(price, gst, false)).toThrow();
   });
 });

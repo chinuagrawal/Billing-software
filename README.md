@@ -190,3 +190,6 @@ Open an invoice from Invoices. Drafts have a labelled **Delete draft** button wi
 
 ### Bill round-off
 New and re-saved draft invoices calculate the final payable amount to the nearest whole rupee (50 paise rounds up). The trusted command computes and stores a separate round-off adjustment; client-provided adjustments are ignored. Item, discount and GST calculations retain their existing paise precision. The editor, all print templates, amount in words, payment limits and balances use the saved adjustment. Existing issued invoices without this field retain their original amounts. Gross profit includes the bill adjustment; GST taxable values and tax amounts do not change. Sales exports show round-off separately. The GSTR-1 workbook separates it in Summary and Sales register and reconciles invoice values to HSN totals after round-off.
+
+
+The invoice editor supports editing either the excluding-GST or including-GST unit rate. Inclusive entries update the excluding-GST rate at paise precision using the actual local/interstate tax split. Where an exact inclusive amount cannot be represented with paise prices, the closest rate is selected and a rounding note is shown while editing. Discounts apply after the unit rate; invoice round-off remains separate. Product master prices are not changed by invoice edits.

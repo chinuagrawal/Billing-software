@@ -2010,6 +2010,13 @@ tbody tr:hover {
   min-width: 105px;
   white-space: nowrap;
 }
+.editor-table .gst-inclusive-rate input {
+  width: 105px;
+}
+.editor-table .gst-inclusive-rate small {
+  max-width: 150px;
+  white-space: normal;
+}
 .items-empty {
   padding: 30px;
   text-align: center;

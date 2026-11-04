@@ -2,8 +2,17 @@ import { useState } from 'react';
 import { Plus, Trash2, FileCheck2, Save, Info } from 'lucide-react';
 import type { Invoice, LineItem } from '../types';
 import { useStore } from '../lib/store';
-import { dateLabel, money, totals, today, uid, roundedInvoiceTotals } from '../lib/billing';
+import {
+  dateLabel,
+  money,
+  totals,
+  today,
+  uid,
+  roundedInvoiceTotals,
+  inclusiveUnitRate,
+} from '../lib/billing';
 import { Field, StateSelect } from './ui';
+import { InclusiveRateInput } from './InclusiveRateInput';
 
 export function InvoiceEditor({
   initial,
@@ -181,24 +190,8 @@ export function InvoiceEditor({
           {data.products.map((p) => (
             <option key={p.id} value={p.id}>
               {p.name} · {money(p.price)} excl. GST · {p.gst}% GST ·{' '}
-              {money(
-                totals(
-                  [
-                    {
-                      productId: p.id,
-                      name: p.name,
-                      hsn: p.hsn,
-                      unit: p.unit,
-                      qty: 1,
-                      price: p.price,
-                      gst: p.gst,
-                      discount: 0,
-                    },
-                  ],
-                  place !== data.business.state,
-                ).total,
-              )}{' '}
-              incl. GST · {p.stock} in stock
+              {money(inclusiveUnitRate(p.price, p.gst, place !== data.business.state))} incl. GST ·{' '}
+              {p.stock} in stock
             </option>
           ))}
         </select>
@@ -251,13 +244,11 @@ export function InvoiceEditor({
                   />
                 </td>
                 <td className="amount gst-inclusive-rate">
-                  <strong>
-                    {money(
-                      totals([{ ...item, qty: 1, discount: 0 }], place !== data.business.state)
-                        .total,
-                    )}
-                  </strong>
-                  <small>per {item.unit}</small>
+                  <InclusiveRateInput
+                    item={item}
+                    interstate={place !== data.business.state}
+                    onPrice={(price) => update(index, 'price', price)}
+                  />
                 </td>
                 <td>
                   <input
@@ -303,7 +294,8 @@ export function InvoiceEditor({
       {items.length > 0 && (
         <p className="form-hint">
           Unit rates are before discount. Each line amount includes GST after discount and line
-          rounding.
+          rounding. Edit either unit rate to update the other. GST rounding may adjust the inclusive
+          rate by a paise.
         </p>
       )}
       <div className="invoice-bottom">
