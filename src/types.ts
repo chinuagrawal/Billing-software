@@ -105,7 +105,11 @@ export interface Workspace {
 export type Command =
   | { type: 'purchase'; purchase: Purchase }
   | { type: 'saveCustomer'; customer: Customer }
-  | { type: 'saveProduct'; product: Product }
+  | {
+      type: 'saveProduct';
+      product: Product;
+      costCorrection?: { previousCost: number; reason: string };
+    }
   | { type: 'saveBusiness'; business: Business }
   | { type: 'saveInvoice'; invoice: Invoice; issue: boolean }
   | { type: 'payment'; payment: Payment }

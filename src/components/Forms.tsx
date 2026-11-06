@@ -145,6 +145,8 @@ export function ProductForm({
     ),
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false);
+  const [correctCost, setCorrectCost] = useState(false);
+  const [costReason, setCostReason] = useState('');
   const set = (k: keyof Product, v: string | number) => setP({ ...p, [k]: v });
   return (
     <form
@@ -154,7 +156,13 @@ export function ProductForm({
         setBusy(true);
         setError('');
         try {
-          await execute({ type: 'saveProduct', product: p });
+          await execute({
+            type: 'saveProduct',
+            product: p,
+            ...(initial && correctCost
+              ? { costCorrection: { previousCost: initial.cost, reason: costReason.trim() } }
+              : {}),
+          });
           onDone('Product saved.');
         } catch (e) {
           setError((e as Error).message);
@@ -215,11 +223,40 @@ export function ProductForm({
             type="number"
             step="0.01"
             min="0"
-            disabled={Boolean(initial)}
+            disabled={Boolean(initial) && !correctCost}
             value={p.cost}
             onChange={(e) => set('cost', Number(e.target.value))}
           />
         </Field>
+        {initial && (
+          <div className="field">
+            <label>
+              <input
+                type="checkbox"
+                style={{ width: 'auto', minHeight: 0, padding: 0, marginRight: 6 }}
+                checked={correctCost}
+                onChange={(e) => setCorrectCost(e.target.checked)}
+              />{' '}
+              Correct an incorrectly entered purchase / stock cost
+            </label>
+            <p className="form-hint">
+              Updates the unit cost of current stock and future sales. Existing invoices and
+              purchase history stay unchanged. Use Adjust stock for a new purchase.
+            </p>
+            {correctCost && (
+              <Field label="Correction reason *">
+                <input
+                  required
+                  minLength={3}
+                  maxLength={500}
+                  value={costReason}
+                  onChange={(e) => setCostReason(e.target.value)}
+                  placeholder="e.g. Opening purchase rate entered incorrectly"
+                />
+              </Field>
+            )}
+          </div>
+        )}
         <Field label="GST rate %" hint="Use the rate applicable to your product.">
           <input
             required

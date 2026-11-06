@@ -105,7 +105,11 @@ var commandSchema = z.discriminatedUnion("type", [
     }).strict()
   }).strict(),
   z.object({ type: z.literal("saveCustomer"), customer }).strict(),
-  z.object({ type: z.literal("saveProduct"), product }).strict(),
+  z.object({
+    type: z.literal("saveProduct"),
+    product,
+    costCorrection: z.object({ previousCost: amount, reason: z.string().trim().min(3).max(500) }).strict().optional()
+  }).strict(),
   z.object({ type: z.literal("saveBusiness"), business }).strict(),
   z.object({ type: z.literal("saveInvoice"), invoice, issue: z.boolean() }).strict(),
   z.object({ type: z.literal("payment"), payment }).strict(),
@@ -296,8 +300,27 @@ function applyCommand(current, command) {
       !state.products.some((x) => x.id !== p.id && x.sku.toLowerCase() === p.sku.toLowerCase()),
       "This SKU is already in use."
     );
+    if (command.costCorrection) {
+      insist(old, "Save the product before correcting its cost.");
+      insist(
+        old.cost === command.costCorrection.previousCost,
+        "Stock cost changed. Reopen the product and try again."
+      );
+      insist(
+        command.costCorrection.reason.trim().length >= 3 && command.costCorrection.reason.trim().length <= 500,
+        "Enter a correction reason (3\u2013500 characters)."
+      );
+      log(
+        "Stock cost corrected",
+        `${p.name}: ${money(old.cost)} \u2192 ${money(p.cost)} per ${p.unit} \xB7 Stock ${old.stock} \xB7 ${command.costCorrection.reason.trim()}`
+      );
+    }
     state.products = [
-      { ...p, cost: old?.cost ?? p.cost, stock: old?.stock ?? p.stock },
+      {
+        ...p,
+        cost: command.costCorrection ? p.cost : old?.cost ?? p.cost,
+        stock: old?.stock ?? p.stock
+      },
       ...state.products.filter((x) => x.id !== p.id)
     ];
     log("Product saved", p.name);

@@ -200,3 +200,5 @@ Each invoice has Save PDF and Share PDF controls, and the invoice list has Share
 
 
 Received amounts and outstanding balances are private workspace information. They appear in the invoice window's non-printing payment summary, lists and payment tracking, and are omitted from InvoiceDocument in all three customer bill styles. Print / PDF, Save PDF and Share PDF therefore omit these payment-tracking amounts. Invoice totals, GST and payment recording remain unchanged.
+
+Existing products support an explicit stock-cost correction from Edit product, with a required reason and an audit entry showing the old and new rate. Corrections preserve stock quantity, recorded purchases and issued-invoice cost snapshots; future invoices and current stock valuation use the corrected rate. Stale corrections are rejected when the current cost has changed.

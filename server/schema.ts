@@ -117,7 +117,16 @@ export const commandSchema = z.discriminatedUnion('type', [
     })
     .strict(),
   z.object({ type: z.literal('saveCustomer'), customer }).strict(),
-  z.object({ type: z.literal('saveProduct'), product }).strict(),
+  z
+    .object({
+      type: z.literal('saveProduct'),
+      product,
+      costCorrection: z
+        .object({ previousCost: amount, reason: z.string().trim().min(3).max(500) })
+        .strict()
+        .optional(),
+    })
+    .strict(),
   z.object({ type: z.literal('saveBusiness'), business }).strict(),
   z.object({ type: z.literal('saveInvoice'), invoice, issue: z.boolean() }).strict(),
   z.object({ type: z.literal('payment'), payment }).strict(),

@@ -487,3 +487,41 @@ describe('Editable GST-inclusive unit rates', () => {
       expect(() => exclusiveUnitRate(price, gst, false)).toThrow();
   });
 });
+
+describe('Product cost corrections', () => {
+  it('corrects current cost without changing stock or issued invoice profit', () => {
+    const { state: initial, invoice } = fixture();
+    const state = applyCommand(initial, { type: 'saveInvoice', invoice, issue: true });
+    const historical = invoiceProfit(state.invoices[0]);
+    const product = { ...state.products[0] };
+    const stock = product.stock;
+    const corrected = applyCommand(state, {
+      type: 'saveProduct',
+      product: { ...product, cost: 450, stock: 999 },
+      costCorrection: { previousCost: product.cost, reason: 'Opening cost typo' },
+    });
+    expect(corrected.products[0].cost).toBe(450);
+    expect(corrected.products[0].stock).toBe(stock);
+    expect(invoiceProfit(corrected.invoices[0])).toEqual(historical);
+    expect(JSON.stringify(corrected.audit)).toContain('Opening cost typo');
+  });
+  it('rejects a stale correction or a missing reason', () => {
+    const { state } = fixture();
+    const product = { ...state.products[0], cost: 450 };
+    expect(() =>
+      applyCommand(state, {
+        type: 'saveProduct',
+        product,
+        costCorrection: { previousCost: 123, reason: 'Opening cost typo' },
+      }),
+    ).toThrow('Stock cost changed');
+    expect(() =>
+      applyCommand(state, {
+        type: 'saveProduct',
+        product,
+        costCorrection: { previousCost: state.products[0].cost, reason: '' },
+      }),
+    ).toThrow('correction reason');
+    expect(state.products[0].cost).toBe(500);
+  });
+});
