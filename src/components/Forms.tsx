@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { auth } from '../lib/firebase';
+import { useEffect, useState } from 'react';
 import type { Customer, Product, Invoice } from '../types';
 import { useStore } from '../lib/store';
-import { uid, today, money, balance } from '../lib/billing';
+import { uid, today, money, balance, validGstin } from '../lib/billing';
 import { Field, StateSelect } from './ui';
 import { InclusiveRateInput } from './InclusiveRateInput';
 
@@ -29,6 +30,58 @@ export function CustomerForm({
     ),
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false);
+  const [lookupMessage, setLookupMessage] = useState('');
+  const [lookingUp, setLookingUp] = useState(false);
+  useEffect(() => {
+    if (value.type !== 'B2B' || !validGstin(value.gstin) || value.gstin === initial?.gstin) {
+      setLookupMessage('');
+      setLookingUp(false);
+      return;
+    }
+    const controller = new AbortController();
+    const gstin = value.gstin;
+    const timer = window.setTimeout(async () => {
+      setLookingUp(true);
+      setLookupMessage('Looking up GST details…');
+      try {
+        if (!auth?.currentUser) throw new Error('Sign in to fetch registered GST details.');
+        const token = await auth.currentUser.getIdToken();
+        const response = await fetch('/api/gstin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ gstin }),
+          signal: controller.signal,
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'GST lookup failed.');
+        if (controller.signal.aborted) return;
+        setValue((current) =>
+          current.gstin === gstin && current.type === 'B2B'
+            ? {
+                ...current,
+                name: current.name === value.name ? result.name : current.name,
+                address:
+                  current.address === value.address && result.address
+                    ? result.address
+                    : current.address,
+                state: result.state,
+              }
+            : current,
+        );
+        setLookupMessage(
+          `GST details filled. Registration status: ${result.status || 'Unavailable'}. Review before saving.`,
+        );
+      } catch (error) {
+        if (!controller.signal.aborted) setLookupMessage((error as Error).message);
+      } finally {
+        if (!controller.signal.aborted) setLookingUp(false);
+      }
+    }, 600);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [value.gstin, value.type, initial?.gstin]);
   const set = (key: keyof Customer, v: string) => setValue({ ...value, [key]: v });
   return (
     <form
@@ -83,14 +136,22 @@ export function CustomerForm({
         </Field>
       </div>
       {value.type === 'B2B' && (
-        <Field label="GSTIN *" hint="15-character GSTIN; state and checksum are validated.">
+        <Field
+          label="GSTIN *"
+          hint="Enter a valid GSTIN to fetch registered business details automatically."
+        >
           <input
             required
             maxLength={15}
             value={value.gstin}
-            onChange={(e) => set('gstin', e.target.value.toUpperCase())}
+            onChange={(e) => set('gstin', e.target.value.trim().toUpperCase())}
           />
         </Field>
+      )}
+      {lookupMessage && (
+        <p className="form-hint" role="status">
+          {lookupMessage}
+        </p>
       )}
       <Field label="Billing address *">
         <textarea
@@ -110,7 +171,7 @@ export function CustomerForm({
         <button type="button" className="button secondary" onClick={onCancel}>
           Cancel
         </button>
-        <button className="button primary" disabled={busy}>
+        <button className="button primary" disabled={busy || lookingUp}>
           {busy ? 'Saving…' : 'Save customer'}
         </button>
       </div>

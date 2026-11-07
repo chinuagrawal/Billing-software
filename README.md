@@ -202,3 +202,7 @@ Each invoice has Save PDF and Share PDF controls, and the invoice list has Share
 Received amounts and outstanding balances are private workspace information. They appear in the invoice window's non-printing payment summary, lists and payment tracking, and are omitted from InvoiceDocument in all three customer bill styles. Print / PDF, Save PDF and Share PDF therefore omit these payment-tracking amounts. Invoice totals, GST and payment recording remain unchanged.
 
 Existing products support an explicit stock-cost correction from Edit product, with a required reason and an audit entry showing the old and new rate. Corrections preserve stock quantity, recorded purchases and issued-invoice cost snapshots; future invoices and current stock valuation use the corrected rate. Stale corrections are rejected when the current cost has changed.
+
+
+### GSTIN customer autofill
+Set `SANDBOX_API_KEY` and `SANDBOX_API_SECRET` as server-only Vercel Production environment variables, then redeploy. Never use a `VITE_` prefix for these credentials. Customer creation automatically looks up a checksum-valid GSTIN after typing pauses, fills the trade/legal name, principal address and state, and displays registration status for review. Live Sandbox GSTIN search access is required. Phone and email are entered manually. Requests require Firebase sign-in and are limited to 30 per owner per hour. Failures allow manual entry. Credentials and provider tokens are never returned to the browser.

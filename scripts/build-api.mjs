@@ -1,7 +1,7 @@
 import { build } from 'esbuild';
 
 await build({
-  entryPoints: ['server/http/command.ts', 'server/http/account.ts'],
+  entryPoints: ['server/http/command.ts', 'server/http/account.ts', 'server/http/gstin.ts'],
   outdir: 'api',
   outbase: 'server/http',
   bundle: true,

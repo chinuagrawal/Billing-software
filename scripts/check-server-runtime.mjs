@@ -17,7 +17,7 @@ const key = await client.getSigningKey('runtime-test');
 const payload = Buffer.from('billing-runtime-compatibility-check');
 assert(verify('RSA-SHA256', payload, key.getPublicKey(), sign('RSA-SHA256', payload, privateKey)));
 console.log('JWKS key conversion and RSA verification OK');
-for (const route of ['command', 'account']) {
+for (const route of ['command', 'account', 'gstin']) {
   const { default: handler } = await import(`../api/${route}.js`);
   for (const [method, expected] of [
     ['GET', 405],
