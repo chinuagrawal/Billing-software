@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Trash2, FileCheck2, Save, Info } from 'lucide-react';
+import { Trash2, FileCheck2, Save, Info } from 'lucide-react';
 import type { Invoice, LineItem } from '../types';
 import { useStore } from '../lib/store';
 import {
@@ -34,7 +34,8 @@ export function InvoiceEditor({
     [shipping, setShipping] = useState(initial?.shippingAddress || ''),
     [notes, setNotes] = useState(initial?.notes || '');
   const [items, setItems] = useState<LineItem[]>(initial?.items || []),
-    [product, setProduct] = useState(''),
+    [suggestionsOpen, setSuggestionsOpen] = useState(false),
+    [activeSuggestion, setActiveSuggestion] = useState(0),
     [productSearch, setProductSearch] = useState(''),
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false);
@@ -47,7 +48,7 @@ export function InvoiceEditor({
     sum = roundedInvoiceTotals(items, place !== data.business.state);
   const update = (index: number, key: keyof LineItem, value: string | number) =>
     setItems(items.map((item, n) => (n === index ? { ...item, [key]: value } : item)));
-  const add = () => {
+  const add = (product: string) => {
     const p = data.products.find((p) => p.id === product);
     if (!p) return;
     setItems([
@@ -63,8 +64,9 @@ export function InvoiceEditor({
         discount: 0,
       },
     ]);
-    setProduct('');
+    setSuggestionsOpen(false);
     setProductSearch('');
+    setActiveSuggestion(0);
   };
   async function save(issue: boolean) {
     setError('');
@@ -187,38 +189,89 @@ export function InvoiceEditor({
         <h3>Invoice items</h3>
         <span>Unit rates shown before discount</span>
       </div>
-      <Field label="Search products">
-        <input
-          type="search"
-          placeholder="Search by product name, SKU or HSN"
-          value={productSearch}
-          onChange={(e) => {
-            setProductSearch(e.target.value);
-            setProduct('');
-          }}
-        />
-      </Field>
-      <div className="add-product-row">
-        <select
-          aria-label="Select product"
-          value={product}
-          onChange={(e) => setProduct(e.target.value)}
-        >
-          <option value="">
-            {matchingProducts.length ? 'Choose a product to add…' : 'No matching products'}
-          </option>
-          {matchingProducts.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name} · {p.sku} · {money(p.price)} excl. GST · {p.gst}% GST ·{' '}
-              {money(inclusiveUnitRate(p.price, p.gst, place !== data.business.state))} incl. GST ·{' '}
-              {p.stock} in stock
-            </option>
-          ))}
-        </select>
-        <button className="button secondary" disabled={!product} onClick={add}>
-          <Plus size={16} />
-          Add item
-        </button>
+      <div
+        className="invoice-product-search"
+        onBlur={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget)) setSuggestionsOpen(false);
+        }}
+      >
+        <Field label="Search products">
+          <input
+            type="text"
+            role="combobox"
+            aria-label="Search products"
+            aria-autocomplete="list"
+            aria-expanded={suggestionsOpen}
+            aria-controls="invoice-product-suggestions"
+            aria-activedescendant={
+              suggestionsOpen && matchingProducts[activeSuggestion]
+                ? `product-suggestion-${activeSuggestion}`
+                : undefined
+            }
+            autoComplete="off"
+            placeholder="Type a product name, SKU or HSN…"
+            value={productSearch}
+            onFocus={() => setSuggestionsOpen(true)}
+            onChange={(e) => {
+              setProductSearch(e.target.value);
+              setActiveSuggestion(0);
+              setSuggestionsOpen(true);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') setSuggestionsOpen(false);
+              if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                e.preventDefault();
+                setSuggestionsOpen(true);
+                const next = Math.max(
+                  0,
+                  Math.min(
+                    matchingProducts.length - 1,
+                    activeSuggestion + (e.key === 'ArrowDown' ? 1 : -1),
+                  ),
+                );
+                setActiveSuggestion(next);
+                document
+                  .getElementById(`product-suggestion-${next}`)
+                  ?.scrollIntoView({ block: 'nearest' });
+              }
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                if (suggestionsOpen && matchingProducts[activeSuggestion])
+                  add(matchingProducts[activeSuggestion].id);
+              }
+            }}
+          />
+        </Field>
+        {suggestionsOpen && (
+          <div
+            className="invoice-product-suggestions"
+            id="invoice-product-suggestions"
+            role="listbox"
+            aria-label="Matching products"
+          >
+            {matchingProducts.length === 0 && <p role="status">No matching products</p>}
+            {matchingProducts.map((p, index) => (
+              <div
+                key={p.id}
+                id={`product-suggestion-${index}`}
+                role="option"
+                aria-selected={activeSuggestion === index}
+                onMouseDown={(e) => e.preventDefault()}
+                onMouseEnter={() => setActiveSuggestion(index)}
+                onClick={() => add(p.id)}
+              >
+                <strong>{p.name}</strong>
+                <small>
+                  {p.sku} · HSN {p.hsn} · {p.stock} {p.unit} in stock
+                </small>
+                <span>
+                  {money(inclusiveUnitRate(p.price, p.gst, place !== data.business.state))} incl.
+                  GST
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
       <div className="table-scroll editor-table">
         <table>
