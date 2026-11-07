@@ -268,10 +268,9 @@
   font-weight: 700;
 }
 .bill-words {
-  margin: 14px 0;
+  margin: 8px 0 0;
   border-top: 1px solid var(--bill-rule);
-  border-bottom: 1px solid var(--bill-rule);
-  padding: 10px 0;
+  padding: 6px 0 0;
 }
 .bill-words p {
   font-size: 10px;
@@ -286,7 +285,7 @@
 }
 .bill-signature {
   width: 44%;
-  margin: 24px 0 0 auto;
+  margin: 12px 0 0 auto;
   text-align: center;
   break-inside: avoid;
 }
