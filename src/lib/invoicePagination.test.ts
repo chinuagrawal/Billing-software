@@ -1,6 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { paginateInvoice } from './invoicePagination';
 describe('Invoice print pagination', () => {
+  it('fits a small overflow on one sheet but paginates larger bills', () => {
+    expect(paginateInvoice(1100, 1000, [{ top: 950, bottom: 1100 }])).toEqual([
+      { start: 0, end: 1100, headerHeight: 0 },
+    ]);
+    expect(paginateInvoice(1200, 1000, [])).toHaveLength(2);
+  });
   it('keeps a short invoice on one page', () => {
     expect(paginateInvoice(700, 1000, [])).toEqual([{ start: 0, end: 700, headerHeight: 0 }]);
   });

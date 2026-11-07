@@ -17,6 +17,9 @@ export function paginateInvoice(
   if (!Number.isFinite(height) || height <= 0 || !Number.isFinite(capacity) || capacity <= 0)
     throw new Error('Invalid invoice page dimensions.');
   const pages: PrintPage[] = [];
+  // Small overflows fit on one sheet with at most a 10% reduction in size.
+  // The PDF image uses an A4 bounding box to preserve the full bill's proportions.
+  if (height <= capacity / 0.9) return [{ start: 0, end: height, headerHeight: 0 }];
   let start = 0;
   while (start < height - 0.01) {
     const headerHeight =

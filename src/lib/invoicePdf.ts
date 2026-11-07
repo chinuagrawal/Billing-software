@@ -6,6 +6,7 @@ import { invoicePrintPages, PRINT_MARGIN_MM } from './invoicePrint';
 export function invoicePdfDefinition(i: Invoice, pages: string[]): TDocumentDefinitions {
   const margin = (PRINT_MARGIN_MM * 72) / 25.4;
   const width = ((210 - 2 * PRINT_MARGIN_MM) * 72) / 25.4;
+  const height = ((297 - 2 * PRINT_MARGIN_MM) * 72) / 25.4 - 2;
   if (!pages.length) throw new Error('Invoice PDF has no pages.');
   return {
     pageSize: 'A4',
@@ -14,7 +15,8 @@ export function invoicePdfDefinition(i: Invoice, pages: string[]): TDocumentDefi
       (image, n) =>
         ({
           image,
-          width,
+          fit: [width, height],
+          alignment: 'center',
           margin: [0, 0, 0, 0],
           ...(n ? { pageBreak: 'before' as const } : {}),
         }) as Content,
