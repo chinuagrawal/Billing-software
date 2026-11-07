@@ -35,8 +35,14 @@ export function InvoiceEditor({
     [notes, setNotes] = useState(initial?.notes || '');
   const [items, setItems] = useState<LineItem[]>(initial?.items || []),
     [product, setProduct] = useState(''),
+    [productSearch, setProductSearch] = useState(''),
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false);
+  const searchTerms = productSearch.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const matchingProducts = data.products.filter((p) => {
+    const searchable = `${p.name} ${p.sku} ${p.hsn}`.toLowerCase();
+    return searchTerms.every((term) => searchable.includes(term));
+  });
   const customer = data.customers.find((c) => c.id === customerId),
     sum = roundedInvoiceTotals(items, place !== data.business.state);
   const update = (index: number, key: keyof LineItem, value: string | number) =>
@@ -58,6 +64,7 @@ export function InvoiceEditor({
       },
     ]);
     setProduct('');
+    setProductSearch('');
   };
   async function save(issue: boolean) {
     setError('');
@@ -180,16 +187,29 @@ export function InvoiceEditor({
         <h3>Invoice items</h3>
         <span>Unit rates shown before discount</span>
       </div>
+      <Field label="Search products">
+        <input
+          type="search"
+          placeholder="Search by product name, SKU or HSN"
+          value={productSearch}
+          onChange={(e) => {
+            setProductSearch(e.target.value);
+            setProduct('');
+          }}
+        />
+      </Field>
       <div className="add-product-row">
         <select
           aria-label="Select product"
           value={product}
           onChange={(e) => setProduct(e.target.value)}
         >
-          <option value="">Choose a product to add…</option>
-          {data.products.map((p) => (
+          <option value="">
+            {matchingProducts.length ? 'Choose a product to add…' : 'No matching products'}
+          </option>
+          {matchingProducts.map((p) => (
             <option key={p.id} value={p.id}>
-              {p.name} · {money(p.price)} excl. GST · {p.gst}% GST ·{' '}
+              {p.name} · {p.sku} · {money(p.price)} excl. GST · {p.gst}% GST ·{' '}
               {money(inclusiveUnitRate(p.price, p.gst, place !== data.business.state))} incl. GST ·{' '}
               {p.stock} in stock
             </option>
