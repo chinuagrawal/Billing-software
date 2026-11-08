@@ -157,8 +157,9 @@ export function invoiceProfit(i: Invoice) {
   const sales = round(t.taxable + t.roundOff);
   return { cost, sales, profit: round(sales - cost) };
 }
-export const balance = (i: Invoice) =>
-  i.status === 'issued' ? round(invoiceTotals(i).total - i.paid) : 0;
+export const paymentBalance = (i: Invoice) =>
+  i.status !== 'void' ? round(invoiceTotals(i).total - i.paid) : 0;
+export const balance = (i: Invoice) => (i.status === 'issued' ? paymentBalance(i) : 0);
 export const status = (i: Invoice) =>
   i.status === 'draft'
     ? 'Draft'
@@ -368,7 +369,19 @@ export function applyCommand(current: Workspace, command: Command): Workspace {
     );
     i.business = structuredClone(state.business);
     i.roundOff = roundedInvoiceTotals(i.items, i.business.state !== i.placeOfSupply).roundOff;
-    i.paid = 0;
+    i.paid = existing?.paid ?? 0;
+    insist(
+      invoiceTotals(i).total >= i.paid,
+      'Invoice total cannot be less than payments already received.',
+    );
+    insist(
+      !i.paid || existing?.customer.id === i.customer.id,
+      'A draft with payments must keep the same customer.',
+    );
+    insist(
+      !i.paid || existing?.date === i.date,
+      'A draft with payments must keep the same invoice date.',
+    );
     i.items.forEach((item) => {
       delete item.costTotal;
     });
@@ -407,6 +420,9 @@ export function applyCommand(current: Workspace, command: Command): Workspace {
       );
       state.counters[financialYear] = next;
       i.status = 'issued';
+      state.payments = state.payments.map((payment) =>
+        payment.invoiceId === i.id ? { ...payment, invoiceNumber: i.number } : payment,
+      );
       log('Invoice issued', `${i.number} · ${i.customer.name}`);
     } else {
       i.status = 'draft';
@@ -418,10 +434,13 @@ export function applyCommand(current: Workspace, command: Command): Workspace {
   if (command.type === 'payment') {
     const p = command.payment,
       i = state.invoices.find((x) => x.id === p.invoiceId);
-    insist(i && i.status === 'issued', 'Payments can only be recorded against issued invoices.');
+    insist(
+      i && i.status !== 'void',
+      'Payments can only be recorded against drafts or issued invoices.',
+    );
     insist(!state.payments.some((x) => x.id === p.id), 'This payment has already been recorded.');
     insist(
-      finite(p.amount) && round(p.amount) > 0 && round(p.amount) <= balance(i),
+      finite(p.amount) && round(p.amount) > 0 && round(p.amount) <= paymentBalance(i),
       'Payment must be greater than zero and cannot exceed the balance.',
     );
     insist(

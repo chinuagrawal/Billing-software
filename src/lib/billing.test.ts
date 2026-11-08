@@ -298,10 +298,17 @@ describe('payments and exports', () => {
     expect(() => applyCommand(state, { type: 'payment', payment })).toThrow('already');
     expect(() => applyCommand(state, { type: 'void', id: 'i1' })).toThrow('credit-note');
   });
-  it('rejects payments on drafts', () => {
+  it('records draft payments and preserves them through issuing', () => {
     const { state, invoice } = fixture();
     const next = applyCommand(state, { type: 'saveInvoice', invoice, issue: false });
-    expect(() => applyCommand(next, { type: 'payment', payment })).toThrow('issued invoices');
+    const paid = applyCommand(next, { type: 'payment', payment });
+    expect(paid.invoices[0].paid).toBe(payment.amount);
+    expect(() => applyCommand(paid, { type: 'deleteDraft', id: invoice.id })).toThrow();
+    const reduced = { ...invoice, items: invoice.items.map(item => ({ ...item, price: 0 })) };
+    expect(() => applyCommand(paid, { type: 'saveInvoice', invoice: reduced, issue: false })).toThrow('less than');
+    const issued = applyCommand(paid, { type: 'saveInvoice', invoice, issue: true });
+    expect(issued.invoices[0].paid).toBe(payment.amount);
+    expect(issued.payments[0].invoiceNumber).toBe(issued.invoices[0].number);
   });
   it('quotes CSV values and neutralizes spreadsheet formulas', () => {
     expect(csv([['=HYPERLINK("bad")', 'a,b', 'line\n2']])).toContain('"\'=HYPERLINK(""bad"")"');

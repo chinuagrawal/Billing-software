@@ -219,7 +219,7 @@ function invoiceTotals(i) {
   const roundOff = i.roundOff ?? 0;
   return { ...t, unroundedTotal: t.total, roundOff, total: round(t.total + roundOff) };
 }
-var balance = (i) => i.status === "issued" ? round(invoiceTotals(i).total - i.paid) : 0;
+var paymentBalance = (i) => i.status !== "void" ? round(invoiceTotals(i).total - i.paid) : 0;
 function validGstin(gstin) {
   if (!/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/.test(gstin) || !STATES[gstin.slice(0, 2)])
     return false;
@@ -391,7 +391,19 @@ function applyCommand(current, command) {
     );
     i.business = structuredClone(state.business);
     i.roundOff = roundedInvoiceTotals(i.items, i.business.state !== i.placeOfSupply).roundOff;
-    i.paid = 0;
+    i.paid = existing?.paid ?? 0;
+    insist(
+      invoiceTotals(i).total >= i.paid,
+      "Invoice total cannot be less than payments already received."
+    );
+    insist(
+      !i.paid || existing?.customer.id === i.customer.id,
+      "A draft with payments must keep the same customer."
+    );
+    insist(
+      !i.paid || existing?.date === i.date,
+      "A draft with payments must keep the same invoice date."
+    );
     i.items.forEach((item2) => {
       delete item2.costTotal;
     });
@@ -427,6 +439,9 @@ function applyCommand(current, command) {
       );
       state.counters[financialYear] = next;
       i.status = "issued";
+      state.payments = state.payments.map(
+        (payment2) => payment2.invoiceId === i.id ? { ...payment2, invoiceNumber: i.number } : payment2
+      );
       log("Invoice issued", `${i.number} \xB7 ${i.customer.name}`);
     } else {
       i.status = "draft";
@@ -437,10 +452,13 @@ function applyCommand(current, command) {
   }
   if (command.type === "payment") {
     const p = command.payment, i = state.invoices.find((x) => x.id === p.invoiceId);
-    insist(i && i.status === "issued", "Payments can only be recorded against issued invoices.");
+    insist(
+      i && i.status !== "void",
+      "Payments can only be recorded against drafts or issued invoices."
+    );
     insist(!state.payments.some((x) => x.id === p.id), "This payment has already been recorded.");
     insist(
-      finite(p.amount) && round(p.amount) > 0 && round(p.amount) <= balance(i),
+      finite(p.amount) && round(p.amount) > 0 && round(p.amount) <= paymentBalance(i),
       "Payment must be greater than zero and cannot exceed the balance."
     );
     insist(
@@ -554,6 +572,12 @@ async function executeServerCommand(database, ownerId, requestId, command) {
       );
     }
     if (currentCommand.type === "saveInvoice") {
+      const linkedPayments = await tx.get(
+        root.collection("payments").where("invoiceId", "==", currentCommand.invoice.id)
+      );
+      state.payments = linkedPayments.docs.map(
+        (doc) => doc.data()
+      );
       const customer2 = await tx.get(
         root.collection("customers").doc(currentCommand.invoice.customer.id)
       );

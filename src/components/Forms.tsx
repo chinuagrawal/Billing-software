@@ -2,7 +2,7 @@ import { auth } from '../lib/firebase';
 import { useEffect, useState } from 'react';
 import type { Customer, Product, Invoice } from '../types';
 import { useStore } from '../lib/store';
-import { uid, today, money, balance, validGstin } from '../lib/billing';
+import { uid, today, money, paymentBalance as balance, validGstin } from '../lib/billing';
 import { Field, StateSelect } from './ui';
 import { InclusiveRateInput } from './InclusiveRateInput';
 

@@ -53,6 +53,12 @@ export async function executeServerCommand(
       );
     }
     if (currentCommand.type === 'saveInvoice') {
+      const linkedPayments = await tx.get(
+        root.collection('payments').where('invoiceId', '==', currentCommand.invoice.id),
+      );
+      state.payments = linkedPayments.docs.map(
+        (doc) => doc.data() as Workspace['payments'][number],
+      );
       const customer = await tx.get(
         root.collection('customers').doc(currentCommand.invoice.customer.id),
       );

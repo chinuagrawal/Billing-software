@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Printer, Pencil, Wallet, Ban, Trash2 } from 'lucide-react';
 import type { Invoice } from '../types';
-import { balance, status, money } from '../lib/billing';
+import { paymentBalance as balance, status, money } from '../lib/billing';
 import { useStore } from '../lib/store';
 import { Badge } from './ui';
 import { InvoiceDocument } from './InvoiceDocument';
@@ -57,7 +57,7 @@ export function InvoiceView({
               Edit draft
             </button>
           )}
-          {i.status === 'issued' && balance(i) > 0 && (
+          {i.status !== 'void' && balance(i) > 0 && (
             <button className="button primary" onClick={onPay}>
               <Wallet size={15} />
               Record payment
@@ -67,7 +67,7 @@ export function InvoiceView({
             <Printer size={15} />
             Print / PDF
           </button>
-          {i.status === 'draft' && (
+          {i.status === 'draft' && !i.paid && (
             <button
               className="button secondary danger-text"
               disabled={busy}
