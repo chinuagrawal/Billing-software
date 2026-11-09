@@ -9,7 +9,7 @@ vi.mock('../lib/store', () => ({
 const render = (status: 'draft' | 'issued' | 'void', paid = 0) =>
   renderToStaticMarkup(
     <InvoiceView
-      invoice={{ ...demoWorkspace().invoices[0], status, paid }}
+      invoice={{ ...demoWorkspace().invoices[0], number: status === 'draft' ? 'DRAFT' : demoWorkspace().invoices[0].number, status, paid }}
       onEdit={() => {}}
       onPay={() => {}}
       onDone={() => {}}

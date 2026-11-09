@@ -39,7 +39,9 @@ export async function executeServerCommand(
           ? command.invoice.id
           : command.type === 'payment'
             ? command.payment.invoiceId
-            : command.type === 'void' || command.type === 'deleteDraft'
+            : command.type === 'void' ||
+                command.type === 'deleteDraft' ||
+                command.type === 'reopenInvoice'
               ? command.id
               : null;
     if (invoiceId) {
@@ -90,7 +92,7 @@ export async function executeServerCommand(
     const productIds =
       command.type === 'saveInvoice'
         ? command.invoice.items.map((i) => i.productId)
-        : command.type === 'void'
+        : command.type === 'void' || command.type === 'reopenInvoice'
           ? state.invoices[0]?.items.map((i) => i.productId) || []
           : command.type === 'purchase'
             ? [command.purchase.productId]

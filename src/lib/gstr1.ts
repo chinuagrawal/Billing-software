@@ -58,6 +58,17 @@ export function buildGstr1Report(data: Workspace, options: Gstr1Options) {
     throw new Error('Choose a valid report date range.');
   if (!validGstin(gstin) && !(demo && gstin === ''))
     throw new Error('Choose a valid supplier GSTIN before exporting.');
+  if (
+    data.invoices.some(
+      (i) =>
+        i.status === 'draft' &&
+        i.number !== 'DRAFT' &&
+        i.business.gstin === gstin &&
+        i.date >= from &&
+        i.date <= to,
+    )
+  )
+    throw new Error('Reissue reopened numbered drafts before exporting GSTR-1 for this period.');
   const review: ReportCell[][] = [];
   const warn = (invoice: string, issue: string, action: string) =>
     review.push([invoice, issue, action]);

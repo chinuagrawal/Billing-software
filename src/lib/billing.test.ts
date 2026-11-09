@@ -562,3 +562,39 @@ it('undoes a receipt once, restores balance and retains its audit history', () =
   expect(() => applyCommand(undone, command)).toThrow();
   expect(applyCommand(undone, { type: 'void', id: invoice.id }).invoices[0].status).toBe('void');
 });
+
+it('reopens a paid invoice and reissues its reserved number exactly once', () => {
+  const { state, invoice } = fixture();
+  const issued = applyCommand(state, { type: 'saveInvoice', invoice, issue: true });
+  const receipt = {
+    id: 'reopen-test',
+    invoiceId: invoice.id,
+    invoiceNumber: '',
+    customerName: '',
+    amount: 100,
+    date: invoice.date,
+    method: 'Cash',
+    reference: '',
+  };
+  const paid = applyCommand(issued, { type: 'payment', payment: receipt });
+  const command = {
+    type: 'reopenInvoice' as const,
+    id: invoice.id,
+    reason: 'Issued by mistake',
+    unfiledConfirmed: true as const,
+  };
+  const reopened = applyCommand(paid, command);
+  expect(reopened.invoices[0].status).toBe('draft');
+  expect(reopened.invoices[0].number).toBe(issued.invoices[0].number);
+  expect(reopened.invoices[0].paid).toBe(100);
+  expect(reopened.products[0].stock).toBe(state.products[0].stock);
+  expect(() => applyCommand(reopened, command)).toThrow();
+  expect(() => applyCommand(reopened, { type: 'deleteDraft', id: invoice.id })).toThrow();
+  const saved = applyCommand(reopened, { type: 'saveInvoice', invoice, issue: false });
+  expect(saved.invoices[0].number).toBe(issued.invoices[0].number);
+  const reissued = applyCommand(saved, { type: 'saveInvoice', invoice, issue: true });
+  expect(reissued.invoices[0].number).toBe(issued.invoices[0].number);
+  expect(reissued.invoices[0].paid).toBe(100);
+  expect(reissued.counters).toEqual(issued.counters);
+  expect(reissued.products[0].stock).toBe(issued.products[0].stock);
+});

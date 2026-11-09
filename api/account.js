@@ -97,6 +97,12 @@ var payment = z.object({
 }).strict();
 var commandSchema = z.discriminatedUnion("type", [
   z.object({
+    type: z.literal("reopenInvoice"),
+    id,
+    reason: z.string().trim().min(3).max(500),
+    unfiledConfirmed: z.literal(true)
+  }).strict(),
+  z.object({
     type: z.literal("undoPayment"),
     id: z.string().min(1).max(100).regex(/^[^/]+$/),
     invoiceId: z.string().min(1).max(100).regex(/^[^/]+$/),

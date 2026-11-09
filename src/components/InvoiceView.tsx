@@ -23,6 +23,9 @@ export function InvoiceView({
   const [confirm, setConfirm] = useState(false),
     [busy, setBusy] = useState(false),
     [error, setError] = useState('');
+  const [reopen, setReopen] = useState(false);
+  const [reopenReason, setReopenReason] = useState('');
+  const [unfiled, setUnfiled] = useState(false);
   const i = invoice;
   const template = resolveTemplate(data.business.invoiceTemplate || i.business.invoiceTemplate);
   const filename = invoiceFilename(i, mode === 'demo');
@@ -57,6 +60,11 @@ export function InvoiceView({
               {i.status === 'void' ? 'Create draft copy' : 'Edit draft'}
             </button>
           )}
+          {i.status === 'issued' && (
+            <button className="button secondary" disabled={busy} onClick={() => setReopen(true)}>
+              Reopen as draft
+            </button>
+          )}
           {i.status !== 'void' && balance(i) > 0 && (
             <button className="button primary" onClick={onPay}>
               <Wallet size={15} />
@@ -67,7 +75,7 @@ export function InvoiceView({
             <Printer size={15} />
             Print / PDF
           </button>
-          {i.status === 'draft' && !i.paid && (
+          {i.status === 'draft' && i.number === 'DRAFT' && !i.paid && (
             <button
               className="button secondary danger-text"
               disabled={busy}
@@ -108,6 +116,58 @@ export function InvoiceView({
           </span>
         </div>
       </section>
+      {reopen && (
+        <div className="confirm-panel no-print">
+          <strong>Reopen {i.number} as draft</strong>
+          <p>
+            The invoice number and payment stay linked to this invoice. Stock is restored until you
+            issue it again. Complete the correction before exporting GSTR-1.
+          </p>
+          <label>
+            <input
+              type="checkbox"
+              checked={unfiled}
+              onChange={(e) => setUnfiled(e.target.checked)}
+            />{' '}
+            I confirm this invoice has not been filed in GSTR-1 and has no e-invoice IRN.
+          </label>
+          <input
+            aria-label="Reason for reopening"
+            placeholder="Reason for correction"
+            maxLength={500}
+            value={reopenReason}
+            onChange={(e) => setReopenReason(e.target.value)}
+          />
+          <button className="button secondary" disabled={busy} onClick={() => setReopen(false)}>
+            Back
+          </button>
+          <button
+            className="button primary"
+            disabled={busy || !unfiled || reopenReason.trim().length < 3}
+            onClick={async () => {
+              setBusy(true);
+              setError('');
+              try {
+                await execute({
+                  type: 'reopenInvoice',
+                  id: i.id,
+                  reason: reopenReason,
+                  unfiledConfirmed: true,
+                });
+                onDone(
+                  'Invoice reopened. Open it and choose Edit draft. Its number and payments are retained.',
+                );
+              } catch (error) {
+                setError((error as Error).message);
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            Confirm reopen as draft
+          </button>
+        </div>
+      )}
       {confirm && (
         <div className="confirm-panel no-print">
           <strong>{i.status === 'draft' ? 'Delete this draft?' : `Cancel ${i.number}?`}</strong>

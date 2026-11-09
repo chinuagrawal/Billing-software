@@ -94,6 +94,12 @@ var payment = z.object({
 }).strict();
 var commandSchema = z.discriminatedUnion("type", [
   z.object({
+    type: z.literal("reopenInvoice"),
+    id,
+    reason: z.string().trim().min(3).max(500),
+    unfiledConfirmed: z.literal(true)
+  }).strict(),
+  z.object({
     type: z.literal("undoPayment"),
     id: z.string().min(1).max(100).regex(/^[^/]+$/),
     invoiceId: z.string().min(1).max(100).regex(/^[^/]+$/),
@@ -376,6 +382,11 @@ function applyCommand(current, command) {
   if (command.type === "saveInvoice") {
     const i = structuredClone(command.invoice), existing = state.invoices.find((x) => x.id === i.id);
     insist(!existing || existing.status === "draft", "An issued invoice cannot be edited.");
+    const reservedNumber = existing?.number && existing.number !== "DRAFT" ? existing.number : void 0;
+    insist(
+      !reservedNumber || i.date === existing.date && i.customer.id === existing.customer.id && state.business.gstin === existing.business.gstin,
+      "A reopened invoice must keep its date, customer and business GSTIN."
+    );
     delete i.roundOff;
     const customer2 = state.customers.find((c) => c.id === i.customer.id);
     insist(customer2, "Select a customer.");
@@ -436,14 +447,18 @@ function applyCommand(current, command) {
         const p = state.products.find((x) => x.id === item2.productId);
         item2.costTotal = round(item2.qty * p.cost);
       });
-      const financialYear = fy(i.date), next = (state.counters[financialYear] || 0) + 1;
-      insist(next <= 99999, "Invoice sequence limit reached for this financial year.");
-      i.number = `${i.business.prefix}/${financialYear}/${String(next).padStart(4, "0")}`;
-      insist(
-        i.number.length <= 16,
-        "Invoice number exceeds 16 characters. Shorten your invoice prefix in Settings."
-      );
-      state.counters[financialYear] = next;
+      if (reservedNumber) {
+        i.number = reservedNumber;
+      } else {
+        const financialYear = fy(i.date), next = (state.counters[financialYear] || 0) + 1;
+        insist(next <= 99999, "Invoice sequence limit reached for this financial year.");
+        i.number = `${i.business.prefix}/${financialYear}/${String(next).padStart(4, "0")}`;
+        insist(
+          i.number.length <= 16,
+          "Invoice number exceeds 16 characters. Shorten your invoice prefix in Settings."
+        );
+        state.counters[financialYear] = next;
+      }
       i.status = "issued";
       state.payments = state.payments.map(
         (payment2) => payment2.invoiceId === i.id ? { ...payment2, invoiceNumber: i.number } : payment2
@@ -451,7 +466,7 @@ function applyCommand(current, command) {
       log("Invoice issued", `${i.number} \xB7 ${i.customer.name}`);
     } else {
       i.status = "draft";
-      i.number = "DRAFT";
+      i.number = reservedNumber || "DRAFT";
       log("Draft saved", i.customer.name);
     }
     state.invoices = [i, ...state.invoices.filter((x) => x.id !== i.id)];
@@ -509,8 +524,34 @@ function applyCommand(current, command) {
       !state.payments.some((p) => p.invoiceId === command.id),
       "A draft with recorded payments cannot be deleted."
     );
+    insist(
+      invoice2?.number === "DRAFT",
+      "A reopened numbered invoice must be reissued or cancelled, not deleted."
+    );
     state.invoices = state.invoices.filter((x) => x.id !== command.id);
     log("Draft deleted", `${invoice2.id} \xB7 ${invoice2.customer.name}`);
+  }
+  if (command.type === "reopenInvoice") {
+    const invoice2 = state.invoices.find((i) => i.id === command.id);
+    insist(invoice2 && invoice2.status === "issued", "Only an issued invoice can be reopened.");
+    insist(
+      command.unfiledConfirmed === true && command.reason.trim().length >= 3 && command.reason.trim().length <= 500,
+      "Confirm the invoice is unfiled, has no IRN, and enter a reason."
+    );
+    log(
+      "Invoice reopened as draft",
+      `${command.reason.trim()} \xB7 Confirmed unfiled and no IRN \xB7 Previous invoice ${JSON.stringify(invoice2)}`
+    );
+    for (const item2 of invoice2.items) {
+      const product2 = state.products.find((p) => p.id === item2.productId);
+      insist(product2, "An invoice product is missing. Restore it before reopening.");
+      const restored = round(product2.stock + item2.qty);
+      product2.cost = Math.round(
+        (product2.stock * product2.cost + (item2.costTotal ?? item2.qty * product2.cost)) / restored * 1e6
+      ) / 1e6;
+      product2.stock = restored;
+    }
+    invoice2.status = "draft";
   }
   if (command.type === "void") {
     const i = state.invoices.find((x) => x.id === command.id);
@@ -583,7 +624,7 @@ async function executeServerCommand(database, ownerId, requestId, command) {
     const business2 = await tx.get(root.collection("settings").doc("business"));
     if (business2.exists) state.business = business2.data();
     const currentCommand = structuredClone(command);
-    const invoiceId = command.type === "undoPayment" ? command.invoiceId : command.type === "saveInvoice" ? command.invoice.id : command.type === "payment" ? command.payment.invoiceId : command.type === "void" || command.type === "deleteDraft" ? command.id : null;
+    const invoiceId = command.type === "undoPayment" ? command.invoiceId : command.type === "saveInvoice" ? command.invoice.id : command.type === "payment" ? command.payment.invoiceId : command.type === "void" || command.type === "deleteDraft" || command.type === "reopenInvoice" ? command.id : null;
     if (invoiceId) {
       const invoice2 = await tx.get(root.collection("invoices").doc(invoiceId));
       if (invoice2.exists) state.invoices = [invoice2.data()];
@@ -628,7 +669,7 @@ async function executeServerCommand(database, ownerId, requestId, command) {
       if (previous.exists)
         state.purchases = [previous.data()];
     }
-    const productIds = command.type === "saveInvoice" ? command.invoice.items.map((i) => i.productId) : command.type === "void" ? state.invoices[0]?.items.map((i) => i.productId) || [] : command.type === "purchase" ? [command.purchase.productId] : command.type === "stock" ? [command.id] : command.type === "saveProduct" ? [command.product.id] : [];
+    const productIds = command.type === "saveInvoice" ? command.invoice.items.map((i) => i.productId) : command.type === "void" || command.type === "reopenInvoice" ? state.invoices[0]?.items.map((i) => i.productId) || [] : command.type === "purchase" ? [command.purchase.productId] : command.type === "stock" ? [command.id] : command.type === "saveProduct" ? [command.product.id] : [];
     for (const id2 of new Set(productIds)) {
       const product2 = await tx.get(root.collection("products").doc(id2));
       if (product2.exists) state.products.push(product2.data());

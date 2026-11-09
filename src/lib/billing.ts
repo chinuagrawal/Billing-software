@@ -339,6 +339,15 @@ export function applyCommand(current: Workspace, command: Command): Workspace {
     const i = structuredClone(command.invoice),
       existing = state.invoices.find((x) => x.id === i.id);
     insist(!existing || existing.status === 'draft', 'An issued invoice cannot be edited.');
+    const reservedNumber =
+      existing?.number && existing.number !== 'DRAFT' ? existing.number : undefined;
+    insist(
+      !reservedNumber ||
+        (i.date === existing!.date &&
+          i.customer.id === existing!.customer.id &&
+          state.business.gstin === existing!.business.gstin),
+      'A reopened invoice must keep its date, customer and business GSTIN.',
+    );
     delete i.roundOff;
     const customer = state.customers.find((c) => c.id === i.customer.id);
     insist(customer, 'Select a customer.');
@@ -410,15 +419,19 @@ export function applyCommand(current: Workspace, command: Command): Workspace {
         const p = state.products.find((x) => x.id === item.productId)!;
         item.costTotal = round(item.qty * p.cost);
       });
-      const financialYear = fy(i.date),
-        next = (state.counters[financialYear] || 0) + 1;
-      insist(next <= 99999, 'Invoice sequence limit reached for this financial year.');
-      i.number = `${i.business.prefix}/${financialYear}/${String(next).padStart(4, '0')}`;
-      insist(
-        i.number.length <= 16,
-        'Invoice number exceeds 16 characters. Shorten your invoice prefix in Settings.',
-      );
-      state.counters[financialYear] = next;
+      if (reservedNumber) {
+        i.number = reservedNumber;
+      } else {
+        const financialYear = fy(i.date),
+          next = (state.counters[financialYear] || 0) + 1;
+        insist(next <= 99999, 'Invoice sequence limit reached for this financial year.');
+        i.number = `${i.business.prefix}/${financialYear}/${String(next).padStart(4, '0')}`;
+        insist(
+          i.number.length <= 16,
+          'Invoice number exceeds 16 characters. Shorten your invoice prefix in Settings.',
+        );
+        state.counters[financialYear] = next;
+      }
       i.status = 'issued';
       state.payments = state.payments.map((payment) =>
         payment.invoiceId === i.id ? { ...payment, invoiceNumber: i.number } : payment,
@@ -426,7 +439,7 @@ export function applyCommand(current: Workspace, command: Command): Workspace {
       log('Invoice issued', `${i.number} · ${i.customer.name}`);
     } else {
       i.status = 'draft';
-      i.number = 'DRAFT';
+      i.number = reservedNumber || 'DRAFT';
       log('Draft saved', i.customer.name);
     }
     state.invoices = [i, ...state.invoices.filter((x) => x.id !== i.id)];
@@ -485,8 +498,39 @@ export function applyCommand(current: Workspace, command: Command): Workspace {
       !state.payments.some((p) => p.invoiceId === command.id),
       'A draft with recorded payments cannot be deleted.',
     );
+    insist(
+      invoice?.number === 'DRAFT',
+      'A reopened numbered invoice must be reissued or cancelled, not deleted.',
+    );
     state.invoices = state.invoices.filter((x) => x.id !== command.id);
     log('Draft deleted', `${invoice.id} · ${invoice.customer.name}`);
+  }
+  if (command.type === 'reopenInvoice') {
+    const invoice = state.invoices.find((i) => i.id === command.id);
+    insist(invoice && invoice.status === 'issued', 'Only an issued invoice can be reopened.');
+    insist(
+      command.unfiledConfirmed === true &&
+        command.reason.trim().length >= 3 &&
+        command.reason.trim().length <= 500,
+      'Confirm the invoice is unfiled, has no IRN, and enter a reason.',
+    );
+    log(
+      'Invoice reopened as draft',
+      `${command.reason.trim()} · Confirmed unfiled and no IRN · Previous invoice ${JSON.stringify(invoice)}`,
+    );
+    for (const item of invoice.items) {
+      const product = state.products.find((p) => p.id === item.productId);
+      insist(product, 'An invoice product is missing. Restore it before reopening.');
+      const restored = round(product.stock + item.qty);
+      product.cost =
+        Math.round(
+          ((product.stock * product.cost + (item.costTotal ?? item.qty * product.cost)) /
+            restored) *
+            1000000,
+        ) / 1000000;
+      product.stock = restored;
+    }
+    invoice.status = 'draft';
   }
   if (command.type === 'void') {
     const i = state.invoices.find((x) => x.id === command.id);
