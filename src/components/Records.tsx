@@ -557,7 +557,11 @@ export function Payments({
   search: string;
   setSearch: (s: string) => void;
 }) {
-  const { data } = useStore();
+  const { data, execute } = useStore();
+  const [undoId, setUndoId] = useState('');
+  const [reason, setReason] = useState('');
+  const [undoBusy, setUndoBusy] = useState(false);
+  const [undoError, setUndoError] = useState('');
   const rows = data.payments.filter((p) =>
     `${p.customerName} ${p.invoiceNumber} ${p.reference}`
       .toLowerCase()
@@ -616,6 +620,51 @@ export function Payments({
           <strong>{money(data.invoices.reduce((s, i) => s + balance(i), 0))}</strong>
         </div>
       </div>
+      {undoId && (
+        <div className="confirm-panel">
+          <strong>Undo this payment entry?</strong>
+          <p>
+            This corrects the recorded receipt and invoice balance. Any actual refund must be
+            handled separately.
+          </p>
+          <input
+            aria-label="Reason for undoing payment"
+            placeholder="Reason, e.g. payment recorded by mistake"
+            maxLength={500}
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+          />
+          {undoError && <p role="alert">{undoError}</p>}
+          <button className="button secondary" disabled={undoBusy} onClick={() => setUndoId('')}>
+            Keep payment
+          </button>
+          <button
+            className="button primary"
+            disabled={undoBusy || reason.trim().length < 3}
+            onClick={async () => {
+              const payment = data.payments.find((p) => p.id === undoId);
+              if (!payment) return;
+              setUndoBusy(true);
+              setUndoError('');
+              try {
+                await execute({
+                  type: 'undoPayment',
+                  id: payment.id,
+                  invoiceId: payment.invoiceId,
+                  reason,
+                });
+                setUndoId('');
+              } catch (error) {
+                setUndoError((error as Error).message);
+              } finally {
+                setUndoBusy(false);
+              }
+            }}
+          >
+            {undoBusy ? 'Undoing…' : 'Confirm undo payment'}
+          </button>
+        </div>
+      )}
       <section className="panel">
         <div className="table-controls">
           <SearchBox
@@ -654,6 +703,18 @@ export function Payments({
                   <td className="amount">{money(p.amount)}</td>
                   <td>
                     <Badge value="Received" />
+                    <button
+                      type="button"
+                      className="button secondary"
+                      disabled={undoBusy}
+                      onClick={() => {
+                        setUndoId(p.id);
+                        setReason('');
+                        setUndoError('');
+                      }}
+                    >
+                      Undo payment
+                    </button>
                   </td>
                 </tr>
               ))}

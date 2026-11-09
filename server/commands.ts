@@ -33,13 +33,15 @@ export async function executeServerCommand(
     if (business.exists) state.business = business.data() as Workspace['business'];
     const currentCommand = structuredClone(command);
     const invoiceId =
-      command.type === 'saveInvoice'
-        ? command.invoice.id
-        : command.type === 'payment'
-          ? command.payment.invoiceId
-          : command.type === 'void' || command.type === 'deleteDraft'
-            ? command.id
-            : null;
+      command.type === 'undoPayment'
+        ? command.invoiceId
+        : command.type === 'saveInvoice'
+          ? command.invoice.id
+          : command.type === 'payment'
+            ? command.payment.invoiceId
+            : command.type === 'void' || command.type === 'deleteDraft'
+              ? command.id
+              : null;
     if (invoiceId) {
       const invoice = await tx.get(root.collection('invoices').doc(invoiceId));
       if (invoice.exists) state.invoices = [invoice.data() as Workspace['invoices'][number]];
@@ -67,6 +69,10 @@ export async function executeServerCommand(
         counter = await tx.get(root.collection('counters').doc(year));
       state.counters[year] = counter.data()?.value || 0;
       currentCommand.invoice.createdAt = state.invoices[0]?.createdAt || new Date().toISOString();
+    }
+    if (command.type === 'undoPayment') {
+      const payment = await tx.get(root.collection('payments').doc(command.id));
+      if (payment.exists) state.payments = [payment.data() as Workspace['payments'][number]];
     }
     if (command.type === 'payment') {
       const previous = await tx.get(root.collection('payments').doc(command.payment.id));
@@ -131,6 +137,7 @@ export async function executeServerCommand(
     }
     if (command.type === 'saveBusiness')
       tx.set(root.collection('settings').doc('business'), next.business);
+    if (command.type === 'undoPayment') tx.delete(root.collection('payments').doc(command.id));
     if (command.type === 'deleteDraft') tx.delete(root.collection('invoices').doc(command.id));
     for (const [key, value] of Object.entries(next.counters))
       if (value !== state.counters[key]) tx.set(root.collection('counters').doc(key), { value });

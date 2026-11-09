@@ -51,10 +51,10 @@ export function InvoiceView({
       <div className="invoice-toolbar no-print">
         <Badge value={status(i)} />
         <div>
-          {i.status === 'draft' && (
+          {(i.status === 'draft' || i.status === 'void') && (
             <button className="button secondary" disabled={busy} onClick={onEdit}>
               <Pencil size={15} />
-              Edit draft
+              {i.status === 'void' ? 'Create draft copy' : 'Edit draft'}
             </button>
           )}
           {i.status !== 'void' && balance(i) > 0 && (

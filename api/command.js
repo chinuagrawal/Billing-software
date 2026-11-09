@@ -94,6 +94,12 @@ var payment = z.object({
 }).strict();
 var commandSchema = z.discriminatedUnion("type", [
   z.object({
+    type: z.literal("undoPayment"),
+    id: z.string().min(1).max(100).regex(/^[^/]+$/),
+    invoiceId: z.string().min(1).max(100).regex(/^[^/]+$/),
+    reason: z.string().trim().min(3).max(500)
+  }).strict(),
+  z.object({
     type: z.literal("purchase"),
     purchase: z.object({
       id,
@@ -450,6 +456,25 @@ function applyCommand(current, command) {
     }
     state.invoices = [i, ...state.invoices.filter((x) => x.id !== i.id)];
   }
+  if (command.type === "undoPayment") {
+    const payment2 = state.payments.find((p) => p.id === command.id);
+    insist(
+      payment2 && payment2.invoiceId === command.invoiceId,
+      "Payment entry was already undone or could not be found."
+    );
+    const invoice2 = state.invoices.find((i) => i.id === payment2.invoiceId);
+    insist(
+      invoice2 && invoice2.status !== "void" && invoice2.paid >= payment2.amount,
+      "Invoice payment balance cannot be adjusted."
+    );
+    insist(
+      command.reason.trim().length >= 3 && command.reason.trim().length <= 500,
+      "Enter a reason (3\u2013500 characters)."
+    );
+    invoice2.paid = round(invoice2.paid - payment2.amount);
+    state.payments = state.payments.filter((p) => p.id !== payment2.id);
+    log("Payment undone", `${command.reason.trim()} \xB7 Original receipt ${JSON.stringify(payment2)}`);
+  }
   if (command.type === "payment") {
     const p = command.payment, i = state.invoices.find((x) => x.id === p.invoiceId);
     insist(
@@ -558,7 +583,7 @@ async function executeServerCommand(database, ownerId, requestId, command) {
     const business2 = await tx.get(root.collection("settings").doc("business"));
     if (business2.exists) state.business = business2.data();
     const currentCommand = structuredClone(command);
-    const invoiceId = command.type === "saveInvoice" ? command.invoice.id : command.type === "payment" ? command.payment.invoiceId : command.type === "void" || command.type === "deleteDraft" ? command.id : null;
+    const invoiceId = command.type === "undoPayment" ? command.invoiceId : command.type === "saveInvoice" ? command.invoice.id : command.type === "payment" ? command.payment.invoiceId : command.type === "void" || command.type === "deleteDraft" ? command.id : null;
     if (invoiceId) {
       const invoice2 = await tx.get(root.collection("invoices").doc(invoiceId));
       if (invoice2.exists) state.invoices = [invoice2.data()];
@@ -585,6 +610,10 @@ async function executeServerCommand(database, ownerId, requestId, command) {
       const year = fy(currentCommand.invoice.date), counter = await tx.get(root.collection("counters").doc(year));
       state.counters[year] = counter.data()?.value || 0;
       currentCommand.invoice.createdAt = state.invoices[0]?.createdAt || (/* @__PURE__ */ new Date()).toISOString();
+    }
+    if (command.type === "undoPayment") {
+      const payment2 = await tx.get(root.collection("payments").doc(command.id));
+      if (payment2.exists) state.payments = [payment2.data()];
     }
     if (command.type === "payment") {
       const previous = await tx.get(root.collection("payments").doc(command.payment.id));
@@ -634,6 +663,7 @@ async function executeServerCommand(database, ownerId, requestId, command) {
     }
     if (command.type === "saveBusiness")
       tx.set(root.collection("settings").doc("business"), next.business);
+    if (command.type === "undoPayment") tx.delete(root.collection("payments").doc(command.id));
     if (command.type === "deleteDraft") tx.delete(root.collection("invoices").doc(command.id));
     for (const [key, value] of Object.entries(next.counters))
       if (value !== state.counters[key]) tx.set(root.collection("counters").doc(key), { value });

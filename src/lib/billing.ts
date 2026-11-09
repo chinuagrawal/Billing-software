@@ -431,6 +431,25 @@ export function applyCommand(current: Workspace, command: Command): Workspace {
     }
     state.invoices = [i, ...state.invoices.filter((x) => x.id !== i.id)];
   }
+  if (command.type === 'undoPayment') {
+    const payment = state.payments.find((p) => p.id === command.id);
+    insist(
+      payment && payment.invoiceId === command.invoiceId,
+      'Payment entry was already undone or could not be found.',
+    );
+    const invoice = state.invoices.find((i) => i.id === payment.invoiceId);
+    insist(
+      invoice && invoice.status !== 'void' && invoice.paid >= payment.amount,
+      'Invoice payment balance cannot be adjusted.',
+    );
+    insist(
+      command.reason.trim().length >= 3 && command.reason.trim().length <= 500,
+      'Enter a reason (3–500 characters).',
+    );
+    invoice.paid = round(invoice.paid - payment.amount);
+    state.payments = state.payments.filter((p) => p.id !== payment.id);
+    log('Payment undone', `${command.reason.trim()} · Original receipt ${JSON.stringify(payment)}`);
+  }
   if (command.type === 'payment') {
     const p = command.payment,
       i = state.invoices.find((x) => x.id === p.invoiceId);

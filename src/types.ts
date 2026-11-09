@@ -103,6 +103,7 @@ export interface Workspace {
   counters: Record<string, number>;
 }
 export type Command =
+  | { type: 'undoPayment'; id: string; invoiceId: string; reason: string }
   | { type: 'purchase'; purchase: Purchase }
   | { type: 'saveCustomer'; customer: Customer }
   | {

@@ -304,8 +304,10 @@ describe('payments and exports', () => {
     const paid = applyCommand(next, { type: 'payment', payment });
     expect(paid.invoices[0].paid).toBe(payment.amount);
     expect(() => applyCommand(paid, { type: 'deleteDraft', id: invoice.id })).toThrow();
-    const reduced = { ...invoice, items: invoice.items.map(item => ({ ...item, price: 0 })) };
-    expect(() => applyCommand(paid, { type: 'saveInvoice', invoice: reduced, issue: false })).toThrow('less than');
+    const reduced = { ...invoice, items: invoice.items.map((item) => ({ ...item, price: 0 })) };
+    expect(() =>
+      applyCommand(paid, { type: 'saveInvoice', invoice: reduced, issue: false }),
+    ).toThrow('less than');
     const issued = applyCommand(paid, { type: 'saveInvoice', invoice, issue: true });
     expect(issued.invoices[0].paid).toBe(payment.amount);
     expect(issued.payments[0].invoiceNumber).toBe(issued.invoices[0].number);
@@ -531,4 +533,32 @@ describe('Product cost corrections', () => {
     ).toThrow('correction reason');
     expect(state.products[0].cost).toBe(500);
   });
+});
+
+it('undoes a receipt once, restores balance and retains its audit history', () => {
+  const { state, invoice } = fixture();
+  const issued = applyCommand(state, { type: 'saveInvoice', invoice, issue: true });
+  const receipt = {
+    id: 'undo-test',
+    invoiceId: invoice.id,
+    invoiceNumber: '',
+    customerName: '',
+    amount: 100,
+    date: invoice.date,
+    method: 'Cash',
+    reference: 'test receipt',
+  };
+  const paid = applyCommand(issued, { type: 'payment', payment: receipt });
+  const command = {
+    type: 'undoPayment' as const,
+    id: receipt.id,
+    invoiceId: invoice.id,
+    reason: 'Entered by mistake',
+  };
+  const undone = applyCommand(paid, command);
+  expect(undone.invoices[0].paid).toBe(0);
+  expect(undone.payments).toHaveLength(0);
+  expect(JSON.stringify(undone.audit)).toContain('test receipt');
+  expect(() => applyCommand(undone, command)).toThrow();
+  expect(applyCommand(undone, { type: 'void', id: invoice.id }).invoices[0].status).toBe('void');
 });

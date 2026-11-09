@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import type { Customer, Invoice, Product } from './types';
 import { useStore } from './lib/store';
-import { status, STATES } from './lib/billing';
+import { status, STATES, uid } from './lib/billing';
 import { Modal, Avatar } from './components/ui';
 import { Dashboard } from './components/Dashboard';
 import { Customers, Inventory, Invoices, Payments } from './components/Records';
@@ -452,7 +452,22 @@ export default function App() {
           {dialog.type === 'view' && selectedInvoice && (
             <InvoiceView
               invoice={selectedInvoice}
-              onEdit={() => setDialog({ type: 'invoice', invoice: selectedInvoice })}
+              onEdit={() =>
+                setDialog({
+                  type: 'invoice',
+                  invoice:
+                    selectedInvoice.status === 'void'
+                      ? {
+                          ...selectedInvoice,
+                          id: uid(),
+                          number: 'DRAFT',
+                          status: 'draft',
+                          paid: 0,
+                          createdAt: new Date().toISOString(),
+                        }
+                      : selectedInvoice,
+                })
+              }
               onPay={() => setDialog({ type: 'payment', invoice: selectedInvoice })}
               onDone={done}
             />
