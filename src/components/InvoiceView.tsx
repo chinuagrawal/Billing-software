@@ -60,9 +60,9 @@ export function InvoiceView({
               {i.status === 'void' ? 'Create draft copy' : 'Edit draft'}
             </button>
           )}
-          {i.status === 'issued' && (
+          {i.status !== 'void' && i.number !== 'DRAFT' && (
             <button className="button secondary" disabled={busy} onClick={() => setReopen(true)}>
-              Reopen as draft
+              {i.status === 'draft' ? 'Release invoice number' : 'Reopen as draft'}
             </button>
           )}
           {i.status !== 'void' && balance(i) > 0 && (
@@ -120,8 +120,9 @@ export function InvoiceView({
         <div className="confirm-panel no-print">
           <strong>Reopen {i.number} as draft</strong>
           <p>
-            The invoice number and payment stay linked to this invoice. Stock is restored until you
-            issue it again. Complete the correction before exporting GSTR-1.
+            The latest invoice number becomes available for the next issued invoice. Payment stays
+            linked to this draft. Stock is restored until you issue it again. Complete the
+            correction before exporting GSTR-1.
           </p>
           <label>
             <input
@@ -155,7 +156,7 @@ export function InvoiceView({
                   unfiledConfirmed: true,
                 });
                 onDone(
-                  'Invoice reopened. Open it and choose Edit draft. Its number and payments are retained.',
+                  'Invoice is now an unnumbered draft. Its number is available for the next issue; payment is retained.',
                 );
               } catch (error) {
                 setError((error as Error).message);

@@ -563,7 +563,7 @@ it('undoes a receipt once, restores balance and retains its audit history', () =
   expect(applyCommand(undone, { type: 'void', id: invoice.id }).invoices[0].status).toBe('void');
 });
 
-it('reopens a paid invoice and reissues its reserved number exactly once', () => {
+it('releases the latest paid invoice number and reissues it exactly once', () => {
   const { state, invoice } = fixture();
   const issued = applyCommand(state, { type: 'saveInvoice', invoice, issue: true });
   const receipt = {
@@ -585,16 +585,29 @@ it('reopens a paid invoice and reissues its reserved number exactly once', () =>
   };
   const reopened = applyCommand(paid, command);
   expect(reopened.invoices[0].status).toBe('draft');
-  expect(reopened.invoices[0].number).toBe(issued.invoices[0].number);
+  expect(reopened.invoices[0].number).toBe('DRAFT');
   expect(reopened.invoices[0].paid).toBe(100);
   expect(reopened.products[0].stock).toBe(state.products[0].stock);
   expect(() => applyCommand(reopened, command)).toThrow();
   expect(() => applyCommand(reopened, { type: 'deleteDraft', id: invoice.id })).toThrow();
   const saved = applyCommand(reopened, { type: 'saveInvoice', invoice, issue: false });
-  expect(saved.invoices[0].number).toBe(issued.invoices[0].number);
+  expect(saved.invoices[0].number).toBe('DRAFT');
   const reissued = applyCommand(saved, { type: 'saveInvoice', invoice, issue: true });
   expect(reissued.invoices[0].number).toBe(issued.invoices[0].number);
   expect(reissued.invoices[0].paid).toBe(100);
   expect(reissued.counters).toEqual(issued.counters);
   expect(reissued.products[0].stock).toBe(issued.products[0].stock);
+});
+
+
+it('gives a released number to the next invoice and rejects release of older numbers', () => {
+  const { state, invoice } = fixture();
+  const first = applyCommand(state, { type: 'saveInvoice', invoice, issue: true });
+  const command = { type: 'reopenInvoice' as const, id: invoice.id, reason: 'Accidental issue', unfiledConfirmed: true as const };
+  const draft = applyCommand(first, command);
+  const next = applyCommand(draft, { type: 'saveInvoice', invoice: { ...invoice, id: 'next-invoice' }, issue: true });
+  expect(next.invoices[0].number).toBe(first.invoices[0].number);
+  const final = applyCommand(next, { type: 'saveInvoice', invoice, issue: true });
+  expect(final.invoices[0].number).not.toBe(next.invoices[0].number);
+  expect(() => applyCommand(final, { ...command, id: 'next-invoice' })).toThrow('latest invoice');
 });

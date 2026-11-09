@@ -507,7 +507,17 @@ export function applyCommand(current: Workspace, command: Command): Workspace {
   }
   if (command.type === 'reopenInvoice') {
     const invoice = state.invoices.find((i) => i.id === command.id);
-    insist(invoice && invoice.status === 'issued', 'Only an issued invoice can be reopened.');
+    insist(
+      invoice && invoice.status !== 'void' && invoice.number !== 'DRAFT',
+      'Only a numbered invoice can release its number.',
+    );
+    const year = fy(invoice.date);
+    const last = state.counters[year] || 0;
+    const expected = `${invoice.business.prefix}/${year}/${String(last).padStart(4, '0')}`;
+    insist(
+      last > 0 && invoice.number === expected,
+      'Only the latest invoice number in this financial year can be released. Later invoice numbers already exist.',
+    );
     insist(
       command.unfiledConfirmed === true &&
         command.reason.trim().length >= 3 &&
@@ -518,7 +528,7 @@ export function applyCommand(current: Workspace, command: Command): Workspace {
       'Invoice reopened as draft',
       `${command.reason.trim()} · Confirmed unfiled and no IRN · Previous invoice ${JSON.stringify(invoice)}`,
     );
-    for (const item of invoice.items) {
+    for (const item of invoice.status === 'issued' ? invoice.items : []) {
       const product = state.products.find((p) => p.id === item.productId);
       insist(product, 'An invoice product is missing. Restore it before reopening.');
       const restored = round(product.stock + item.qty);
@@ -531,6 +541,11 @@ export function applyCommand(current: Workspace, command: Command): Workspace {
       product.stock = restored;
     }
     invoice.status = 'draft';
+    invoice.number = 'DRAFT';
+    state.counters[year] = last - 1;
+    state.payments = state.payments.map((p) =>
+      p.invoiceId === invoice.id ? { ...p, invoiceNumber: 'DRAFT' } : p,
+    );
   }
   if (command.type === 'void') {
     const i = state.invoices.find((x) => x.id === command.id);

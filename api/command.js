@@ -533,7 +533,17 @@ function applyCommand(current, command) {
   }
   if (command.type === "reopenInvoice") {
     const invoice2 = state.invoices.find((i) => i.id === command.id);
-    insist(invoice2 && invoice2.status === "issued", "Only an issued invoice can be reopened.");
+    insist(
+      invoice2 && invoice2.status !== "void" && invoice2.number !== "DRAFT",
+      "Only a numbered invoice can release its number."
+    );
+    const year = fy(invoice2.date);
+    const last = state.counters[year] || 0;
+    const expected = `${invoice2.business.prefix}/${year}/${String(last).padStart(4, "0")}`;
+    insist(
+      last > 0 && invoice2.number === expected,
+      "Only the latest invoice number in this financial year can be released. Later invoice numbers already exist."
+    );
     insist(
       command.unfiledConfirmed === true && command.reason.trim().length >= 3 && command.reason.trim().length <= 500,
       "Confirm the invoice is unfiled, has no IRN, and enter a reason."
@@ -542,7 +552,7 @@ function applyCommand(current, command) {
       "Invoice reopened as draft",
       `${command.reason.trim()} \xB7 Confirmed unfiled and no IRN \xB7 Previous invoice ${JSON.stringify(invoice2)}`
     );
-    for (const item2 of invoice2.items) {
+    for (const item2 of invoice2.status === "issued" ? invoice2.items : []) {
       const product2 = state.products.find((p) => p.id === item2.productId);
       insist(product2, "An invoice product is missing. Restore it before reopening.");
       const restored = round(product2.stock + item2.qty);
@@ -552,6 +562,11 @@ function applyCommand(current, command) {
       product2.stock = restored;
     }
     invoice2.status = "draft";
+    invoice2.number = "DRAFT";
+    state.counters[year] = last - 1;
+    state.payments = state.payments.map(
+      (p) => p.invoiceId === invoice2.id ? { ...p, invoiceNumber: "DRAFT" } : p
+    );
   }
   if (command.type === "void") {
     const i = state.invoices.find((x) => x.id === command.id);
@@ -628,6 +643,15 @@ async function executeServerCommand(database, ownerId, requestId, command) {
     if (invoiceId) {
       const invoice2 = await tx.get(root.collection("invoices").doc(invoiceId));
       if (invoice2.exists) state.invoices = [invoice2.data()];
+    }
+    if (command.type === "reopenInvoice" && state.invoices[0]) {
+      const year = fy(state.invoices[0].date);
+      const counter = await tx.get(root.collection("counters").doc(year));
+      state.counters[year] = counter.data()?.value || 0;
+      const payments = await tx.get(
+        root.collection("payments").where("invoiceId", "==", command.id)
+      );
+      state.payments = payments.docs.map((doc) => doc.data());
     }
     if (command.type === "deleteDraft") {
       const linkedPayments = await tx.get(

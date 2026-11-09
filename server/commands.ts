@@ -48,6 +48,15 @@ export async function executeServerCommand(
       const invoice = await tx.get(root.collection('invoices').doc(invoiceId));
       if (invoice.exists) state.invoices = [invoice.data() as Workspace['invoices'][number]];
     }
+    if (command.type === 'reopenInvoice' && state.invoices[0]) {
+      const year = fy(state.invoices[0].date);
+      const counter = await tx.get(root.collection('counters').doc(year));
+      state.counters[year] = counter.data()?.value || 0;
+      const payments = await tx.get(
+        root.collection('payments').where('invoiceId', '==', command.id),
+      );
+      state.payments = payments.docs.map((doc) => doc.data() as Workspace['payments'][number]);
+    }
     if (command.type === 'deleteDraft') {
       const linkedPayments = await tx.get(
         root.collection('payments').where('invoiceId', '==', command.id).limit(1),
