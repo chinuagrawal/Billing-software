@@ -1,8 +1,11 @@
+import { useEffect } from 'react';
 import {
   ArrowUpRight,
   ArrowRight,
   Check,
   FileText,
+  Layers2,
+  ShieldCheck,
   Package,
   BarChart3,
   ArrowLeft,
@@ -19,11 +22,18 @@ export function Landing({
   onNavigate: (login: boolean) => void;
   onDemo: () => void;
 }) {
+  useEffect(() => {
+    if (location.hash !== '#features') window.scrollTo(0, 0);
+  }, [login]);
+
   return (
     <div className="public-site">
       <header className="public-nav">
         <a href="#home" onClick={() => onNavigate(false)} className="public-brand">
-          <span>ae.</span> Agrawal Billing
+          <span className="public-mark">
+            <Layers2 size={19} aria-hidden="true" />
+          </span>{' '}
+          Billora
         </a>
         <nav aria-label="Main navigation">
           {!login && <a href="#features">Features</a>}
@@ -35,22 +45,18 @@ export function Landing({
       {login ? (
         <main className="public-login">
           <section className="login-story">
-            <span className="public-eyebrow">YOUR BUSINESS. IN BALANCE.</span>
+            <span className="public-eyebrow">BILLORA WORKSPACE</span>
             <h1>
               Welcome back.
               <br />
-              <em>Let’s get to work.</em>
+              <em>Sign in to Billora.</em>
             </h1>
-            <p>
-              Your customers, invoices and stock.
-              <br />
-              One familiar place to pick up where you left off.
-            </p>
+            <p>Access your invoices, inventory and payments from your workspace.</p>
             <div className="login-story-note">
-              <FileText size={24} />
+              <ShieldCheck size={24} />
               <div>
-                <strong>From first bill to daily business.</strong>
-                <p>Built for B2B and B2C billing in India.</p>
+                <strong>Sign in with your mobile</strong>
+                <p>Use the number linked to your workspace.</p>
               </div>
             </div>
             <button className="public-back" onClick={() => onNavigate(false)}>
@@ -66,20 +72,20 @@ export function Landing({
           <section className="public-hero">
             <div className="hero-copy">
               <span className="public-eyebrow">
-                <i /> MADE FOR EVERYDAY BUSINESS
+                <i /> GST BILLING FOR INDIAN BUSINESSES
               </span>
               <h1>
-                Less paperwork.
+                GST billing.
                 <br />
-                More <em>possibility.</em>
+                <em>In sync.</em>
               </h1>
               <p>
-                Beautiful GST bills. Clear stock records. A better view of your business. Bring your
-                wholesale and retail billing together in one simple workspace.
+                Create wholesale and retail invoices, track inventory and payments, and share GST
+                reports with your accountant.
               </p>
               <div className="hero-actions">
                 <button className="public-primary" onClick={() => onNavigate(true)}>
-                  Start your workspace <ArrowUpRight size={19} />
+                  Open your workspace <ArrowUpRight size={19} />
                 </button>
                 <button className="public-demo" onClick={onDemo}>
                   Explore the demo <ArrowRight size={18} />
@@ -99,15 +105,19 @@ export function Landing({
             </div>
             <div className="hero-preview" aria-label="Illustrative invoice preview">
               <div className="preview-top">
-                <span>YOUR NEXT GOOD DAY</span>
-                <span>✦</span>
+                <span>
+                  <i /> Invoice preview
+                </span>
+                <span>Sample</span>
               </div>
               <div className="preview-invoice">
                 <div className="preview-heading">
-                  <span className="preview-logo">ae.</span>
+                  <span className="preview-logo">
+                    <Layers2 size={20} aria-hidden="true" /> Billora
+                  </span>
                   <div>
                     <strong>TAX INVOICE</strong>
-                    <small>AE/26-27/0001</small>
+                    <small>INV/26-27/0001</small>
                   </div>
                 </div>
                 <div className="preview-parties">
@@ -146,7 +156,6 @@ export function Landing({
                   <span>Invoice total</span>
                   <strong>₹4,720.00</strong>
                 </div>
-                <div className="preview-footer">A little less admin. A little more time.</div>
               </div>
               <div className="preview-float">
                 <span>
@@ -154,42 +163,35 @@ export function Landing({
                 </span>
                 <div>
                   <strong>Ready to share</strong>
-                  <small>Your bill, beautifully presented.</small>
+                  <small>PDF invoice</small>
                 </div>
               </div>
-              <small className="preview-caption">Illustrative sample invoice</small>
             </div>
           </section>
-          <div className="public-strip">
-            <span>ONE WORKSPACE, FROM SALE TO SUMMARY</span>
-            <strong>Invoice.</strong>
-            <strong>Track.</strong>
-            <strong>Understand.</strong>
-          </div>
           <section className="public-features" id="features">
             <div className="features-heading">
-              <span className="public-eyebrow">LESS FRICTION. MORE CLARITY.</span>
+              <span className="public-eyebrow">THE BILLORA WORKSPACE</span>
               <h2>
-                The everyday essentials.
+                From the first invoice
                 <br />
-                <em>Thoughtfully together.</em>
+                <em>to month-end.</em>
               </h2>
             </div>
             <div className="feature-grid">
               {[
                 {
                   icon: FileText,
-                  title: 'Bills that mean business.',
+                  title: 'GST invoices',
                   text: 'Create GST invoices, enter prices including tax, choose your bill style and save or share a PDF.',
                 },
                 {
                   icon: Package,
-                  title: 'Know what’s in stock.',
+                  title: 'Inventory and purchases',
                   text: 'Manage products, record purchases and track stock costs as your purchase prices change.',
                 },
                 {
                   icon: BarChart3,
-                  title: 'See the bigger picture.',
+                  title: 'Payments and reports',
                   text: 'Follow payments and invoice profit, then prepare GSTR-1 Excel reports for your accountant.',
                 },
               ].map(({ icon: Icon, title, text }) => (
@@ -203,7 +205,6 @@ export function Landing({
           </section>
           <section className="public-cta">
             <div>
-              <span className="public-eyebrow">MAKE ROOM FOR YOUR BUSINESS</span>
               <h2>Your next invoice starts here.</h2>
             </div>
             <button className="public-primary" onClick={() => onNavigate(true)}>
@@ -214,7 +215,10 @@ export function Landing({
       )}
       <footer className="public-footer">
         <a className="public-brand" href="#home" onClick={() => onNavigate(false)}>
-          <span>ae.</span> Agrawal Billing
+          <span className="public-mark">
+            <Layers2 size={19} aria-hidden="true" />
+          </span>{' '}
+          Billora
         </a>
         <span>Built for business in India.</span>
         <button onClick={() => onNavigate(true)}>

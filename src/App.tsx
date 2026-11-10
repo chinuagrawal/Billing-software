@@ -2,6 +2,7 @@ import { Landing } from './components/Landing';
 import { useCallback, useEffect, useState } from 'react';
 import {
   LayoutDashboard,
+  Layers2,
   FileText,
   Users,
   Package,
@@ -172,13 +173,11 @@ export default function App() {
       <aside className={`sidebar ${mobile ? 'sidebar-open' : ''}`}>
         <a href="#Overview" className="brand" onClick={() => navigate('Overview')}>
           <span className="brand-mark">
-            a<span>e</span>
+            <Layers2 size={21} aria-hidden="true" />
           </span>
           <div>
-            <strong>
-              agrawal<span> enterprises</span>
-            </strong>
-            <small>BUSINESS, BEAUTIFULLY BALANCED</small>
+            <strong>Billora</strong>
+            <small>BILLING WORKSPACE</small>
           </div>
         </a>
         <button className="workspace-switch" onClick={() => navigate('Settings')}>
