@@ -33,7 +33,7 @@ export function Landing({
           <span className="public-mark">
             <Layers2 size={19} aria-hidden="true" />
           </span>{' '}
-          Billora
+          Lekhvanta
         </a>
         <nav aria-label="Main navigation">
           {!login && <a href="#features">Features</a>}
@@ -45,11 +45,11 @@ export function Landing({
       {login ? (
         <main className="public-login">
           <section className="login-story">
-            <span className="public-eyebrow">BILLORA WORKSPACE</span>
+            <span className="public-eyebrow">LEKHVANTA WORKSPACE</span>
             <h1>
               Welcome back.
               <br />
-              <em>Sign in to Billora.</em>
+              <em>Sign in to Lekhvanta.</em>
             </h1>
             <p>Access your invoices, inventory and payments from your workspace.</p>
             <div className="login-story-note">
@@ -113,7 +113,7 @@ export function Landing({
               <div className="preview-invoice">
                 <div className="preview-heading">
                   <span className="preview-logo">
-                    <Layers2 size={20} aria-hidden="true" /> Billora
+                    <Layers2 size={20} aria-hidden="true" /> Lekhvanta
                   </span>
                   <div>
                     <strong>TAX INVOICE</strong>
@@ -170,7 +170,7 @@ export function Landing({
           </section>
           <section className="public-features" id="features">
             <div className="features-heading">
-              <span className="public-eyebrow">THE BILLORA WORKSPACE</span>
+              <span className="public-eyebrow">THE LEKHVANTA WORKSPACE</span>
               <h2>
                 From the first invoice
                 <br />
@@ -218,7 +218,7 @@ export function Landing({
           <span className="public-mark">
             <Layers2 size={19} aria-hidden="true" />
           </span>{' '}
-          Billora
+          Lekhvanta
         </a>
         <span>Built for business in India.</span>
         <button onClick={() => onNavigate(true)}>

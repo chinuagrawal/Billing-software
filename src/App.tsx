@@ -176,7 +176,7 @@ export default function App() {
             <Layers2 size={21} aria-hidden="true" />
           </span>
           <div>
-            <strong>Billora</strong>
+            <strong>Lekhvanta</strong>
             <small>BILLING WORKSPACE</small>
           </div>
         </a>

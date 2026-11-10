@@ -598,17 +598,17 @@
 @media (prefers-reduced-motion: no-preference) {
   .hero-copy,
   .login-story {
-    animation: billora-enter 550ms ease-out both;
+    animation: lekhvanta-enter 550ms ease-out both;
   }
   .hero-preview,
   .public-auth {
-    animation: billora-enter 650ms 100ms ease-out both;
+    animation: lekhvanta-enter 650ms 100ms ease-out both;
   }
   .preview-float {
-    animation: billora-float 3.8s 850ms ease-in-out 2;
+    animation: lekhvanta-float 3.8s 850ms ease-in-out 2;
   }
 }
-@keyframes billora-enter {
+@keyframes lekhvanta-enter {
   from {
     opacity: 0;
     transform: translateY(16px);
@@ -618,7 +618,7 @@
     transform: translateY(0);
   }
 }
-@keyframes billora-float {
+@keyframes lekhvanta-float {
   50% {
     transform: translateY(-6px);
   }
