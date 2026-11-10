@@ -1,3 +1,4 @@
+import { Landing } from './components/Landing';
 import { useCallback, useEffect, useState } from 'react';
 import {
   LayoutDashboard,
@@ -53,6 +54,21 @@ const nav = [
 const pages = [...nav.map((n) => n.name), 'Settings'];
 export default function App() {
   const { data, mode, user, loading, error, logout } = useStore();
+  const [publicPage, setPublicPage] = useState(location.hash === '#login' ? 'login' : 'home');
+  const [exploreDemo, setExploreDemo] = useState(false);
+  useEffect(() => {
+    if (user) setExploreDemo(false);
+  }, [user]);
+  useEffect(() => {
+    const update = () => {
+      if (['#home', '#login', '#features', ''].includes(location.hash)) {
+        setExploreDemo(false);
+        setPublicPage(location.hash === '#login' ? 'login' : 'home');
+      }
+    };
+    window.addEventListener('hashchange', update);
+    return () => window.removeEventListener('hashchange', update);
+  }, []);
   const initial = decodeURIComponent(location.hash.slice(1));
   const [page, setPage] = useState(pages.includes(initial) ? initial : 'Overview'),
     [search, setSearch] = useState(''),
@@ -117,6 +133,26 @@ export default function App() {
     dialog?.type === 'view'
       ? data.invoices.find((i) => i.id === dialog.invoice.id) || dialog.invoice
       : null;
+  if (loading && !user)
+    return (
+      <div className="public-site" style={{ display: 'grid', placeItems: 'center' }} role="status">
+        Opening your workspace…
+      </div>
+    );
+  if (!user && !exploreDemo)
+    return (
+      <Landing
+        login={publicPage === 'login'}
+        onNavigate={(login) => {
+          setPublicPage(login ? 'login' : 'home');
+          location.hash = login ? 'login' : 'home';
+        }}
+        onDemo={() => {
+          setExploreDemo(true);
+          navigate('Overview');
+        }}
+      />
+    );
   if (mode === 'cloud' && !loading && !error && !data.business.setupCompleted) {
     return (
       <div className="onboarding-shell">

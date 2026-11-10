@@ -38,9 +38,9 @@ describe('first sign-in screen', () => {
     expect(html).toContain('Business overview');
     expect(html).not.toContain('Save details &amp; open workspace');
   });
-  it('preserves the separate demo experience', () => {
+  it('offers demo access from the public landing page', () => {
     context.current.mode = 'demo';
     context.current.user = null;
-    expect(renderToStaticMarkup(<App />)).toContain('Business overview');
+    expect(renderToStaticMarkup(<App />)).toContain('Explore the demo');
   });
 });
